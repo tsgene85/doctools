@@ -1,0 +1,31 @@
+--- Page 14 ---
+Preface
+This book owes its beginnings to the pioneering work of Claude Shannon in 1948
+on achieving reliable communication over a noisy transmission channel. Shannon’s
+central theme was that if the signaling rate of the system is less than the channel
+capacity, reliable communication can be achieved if one chooses proper encoding
+and decoding techniques. The design of good codes and of efficient decoding methods,
+initiated by Hamming, Slepian, and others in the early 1950s, has occupied the
+energies of many researchers since then. Much of this work is highly mathematical
+in nature, and requires an extensive background in modern algebra and probability
+theory to understand. This has acted as an impediment to many practicing engineers
+and computer scientists, who are interested in applying these techniques to real sys-
+tems. One of the purposes of this book is to present the essentials of this highly
+complex material in such a manner that it can be understood and applied with only
+a minimum of mathematical background.
+Work on coding in the 1950s and 1960s was devoted primarily to developing the
+theory of efficient encoders and decoders. In 1970, the first author published a book
+entitled An introduction to Error-Correcting Codes, which presented the fundamentals
+of the previous two decades of work covering both block and convolutional codes.
+The approach was to explain the material in an easily understood manner, with a
+minimum of mathematical rigor. The present book takes the same approach to cover-
+ing the fundamentals of coding. However, the entire manuscript has been rewritten
+and much new material has been added. In particular, during the 1970s the emphasis
+in coding research shifted from theory to practical applications. Consequently, three
+completely new chapters on the applications of coding to digital transmission and
+storage systems have been added. Other major additions include a comprehensive
+treatment of the error-detecting capabilities of block codes, and an emphasis on
+probabilistic decoding methods for convolutional codes. A brief description of each
+chapter follows.
+Chapter | presents an overview of coding for error control in data transmission
+xiii

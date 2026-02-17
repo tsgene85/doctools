@@ -1,0 +1,10 @@
+[project]
+name = "doctools"
+version = "0.1.0"
+description = "PDF merge and doc tools"
+requires-python = ">=3.9"
+dependencies = [
+    "pypdf",
+    "ocrmypdf",
+    "openai",
+]
