@@ -9,6 +9,9 @@ import os
 import sys
 from pathlib import Path
 
+# PaddlePaddle 3.3+ CPU: disable OneDNN to avoid ConvertPirAttribute2RuntimeAttribute error
+os.environ["FLAGS_use_mkldnn"] = "0"
+
 
 def _tesseract_candidate_paths() -> list[Path]:
     """Return paths where Tesseract might be installed (Windows)."""
@@ -141,6 +144,9 @@ def _run_ocrmypdf_cli(
     progress_bar: bool,
     jobs: int | None,
     pages: str | None,
+    tagged_pdf_mode: str = "ignore",
+    tesseract_psm: int | None = None,
+    tesseract_config: str | None = None,
 ) -> int:
     """Run ocrmypdf via subprocess (same as command line). Use when API path fails to produce searchable text."""
     import subprocess
@@ -152,6 +158,7 @@ def _run_ocrmypdf_cli(
         str(output_file),
         "-l", language,
         "--optimize", str(optimize_level),
+        "--tagged-pdf-mode", tagged_pdf_mode,
     ]
     if deskew:
         cmd.append("--deskew")
@@ -165,6 +172,10 @@ def _run_ocrmypdf_cli(
         cmd.extend(["--jobs", str(jobs)])
     if pages:
         cmd.extend(["--pages", pages])
+    if tesseract_psm is not None:
+        cmd.extend(["--tesseract-pagesegmode", str(tesseract_psm)])
+    if tesseract_config:
+        cmd.extend(["--tesseract-config", tesseract_config])
     result = subprocess.run(cmd, env=os.environ)
     return result.returncode
 
@@ -199,6 +210,156 @@ def _extract_text_to_file(pdf_path: Path, txt_path: Path) -> None:
     print(f"Wrote extracted text to: {txt_path}", file=sys.stderr)
 
 
+def _paddle_engine_available() -> str | None:
+    """Return None if paddle deps are available, else an error message."""
+    try:
+        from paddleocr import PaddleOCR  # noqa: F401
+    except ImportError:
+        return "paddleocr"
+    try:
+        import pypdfium2  # noqa: F401
+    except ImportError:
+        return "pypdfium2"
+    try:
+        import fitz  # noqa: F401
+    except ImportError:
+        return "pymupdf"
+    return None
+
+
+def _run_ocr_paddle(
+    input_path: str,
+    output_path: str,
+    *,
+    language: str = "en",
+    progress_bar: bool = True,
+    pages: str | None = None,
+    save_text: bool = False,
+) -> int:
+    """
+    OCR PDF using PaddleOCR (detection + recognition). Better for handwritten or mixed content.
+    Requires: pip install doctools[paddle]
+    """
+    try:
+        from paddleocr import PaddleOCR
+    except ImportError:
+        print(
+            "PaddleOCR is not installed. Install the paddle optional dependency:\n"
+            "  pip install 'doctools[paddle]'",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:
+        print(
+            "pypdfium2 is required for PaddleOCR engine. Install: pip install 'doctools[paddle]'",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        print(
+            "PyMuPDF is required for PaddleOCR engine. Install: pip install 'doctools[paddle]'",
+            file=sys.stderr,
+        )
+        return 1
+
+    input_file = Path(input_path).resolve()
+    output_file = Path(output_path).resolve()
+    if not input_file.exists():
+        print(f"Error: File not found: {input_file}", file=sys.stderr)
+        return 1
+    if input_file.suffix.lower() != ".pdf":
+        print(f"Error: Input is not a PDF: {input_file}", file=sys.stderr)
+        return 1
+    if input_file.resolve() == output_file.resolve():
+        print("Error: Input and output must be different files.", file=sys.stderr)
+        return 1
+
+    # Parse page range (1-based). None = all pages.
+    page_indices: list[int] | None = None
+    if pages:
+        # Simple "1-3" or "1,3,5" parsing
+        page_indices = []
+        for part in pages.split(","):
+            part = part.strip()
+            if "-" in part:
+                a, b = part.split("-", 1)
+                page_indices.extend(range(int(a.strip()), int(b.strip()) + 1))
+            else:
+                page_indices.append(int(part))
+        page_indices = [p - 1 for p in page_indices]  # 0-based
+
+    # Map language to PaddleOCR lang code
+    lang_map = {"eng": "en", "en": "en", "fra": "fr", "fr": "fr", "chi": "ch", "ch": "ch"}
+    paddle_lang = lang_map.get(language.split("+")[0].strip().lower(), "en")
+
+    # Newer PaddleOCR: use_textline_orientation (replaces use_angle_cls), show_log removed
+    try:
+        ocr = PaddleOCR(use_textline_orientation=True, lang=paddle_lang)
+    except TypeError:
+        ocr = PaddleOCR(use_angle_cls=True, lang=paddle_lang, show_log=False)
+    render_scale = 2  # render at 2x for better OCR
+
+    doc = pdfium.PdfDocument(str(input_file))
+    n_pages = len(doc)
+    if page_indices is not None:
+        page_list = [i for i in page_indices if 0 <= i < n_pages]
+    else:
+        page_list = list(range(n_pages))
+
+    all_page_results: list[list[tuple[float, float, str]]] = []  # per page: list of (x_pt, y_pt, text)
+    for idx in page_list:
+        page = doc[idx]
+        w_pt, h_pt = page.get_width(), page.get_height()
+        bitmap = page.render(scale=render_scale)
+        try:
+            pil_img = bitmap.to_pil()
+        finally:
+            bitmap.close()
+        import numpy as np
+        img_arr = np.array(pil_img)
+        result = ocr.predict(img_arr)
+        page_texts: list[tuple[float, float, str]] = []
+        if result and result[0]:
+            for line in result[0]:
+                box, (text, _conf) = line
+                if not (text and text.strip()):
+                    continue
+                # box: [[x1,y1],[x2,y2],[x3,y3],[x4,y4]] in image pixels (top-left origin)
+                x_img = (box[0][0] + box[2][0]) / 2
+                y_img = (box[0][1] + box[2][1]) / 2
+                x_pt = x_img / render_scale
+                y_pt = h_pt - (y_img / render_scale)  # PDF y is from bottom
+                page_texts.append((x_pt, y_pt, text.strip()))
+        all_page_results.append(page_texts)
+        if progress_bar and len(page_list) > 1:
+            print(f"  PaddleOCR page {idx + 1}/{n_pages}", file=sys.stderr)
+    doc.close()
+
+    # Build output PDF with text layer using PyMuPDF
+    doc_fitz = fitz.open(str(input_file))
+    font = fitz.Font("helv")
+    fontsize = 10
+    for i, page_texts in enumerate(all_page_results):
+        page_idx = page_list[i]
+        page_fitz = doc_fitz[page_idx]
+        rect = page_fitz.rect
+        tw = fitz.TextWriter(rect)
+        for x_pt, y_pt, text in page_texts:
+            tw.append(fitz.Point(x_pt, y_pt), text, font=font, fontsize=fontsize)
+        tw.write_text(page_fitz, render_mode=3)  # 3 = invisible (searchable only)
+    doc_fitz.save(str(output_file), incremental=False, deflate=True)
+    doc_fitz.close()
+
+    print(f"Wrote searchable PDF to: {output_file}", file=sys.stderr)
+    if save_text:
+        _extract_text_to_file(output_file, input_file.parent / f"{input_file.stem}.txt")
+    return 0
+
+
 def run_ocr(
     input_path: str,
     output_path: str,
@@ -213,18 +374,31 @@ def run_ocr(
     pages: str | None = None,
     optimize: int | None = None,
     save_text: bool = False,
+    tagged_pdf_mode: str = "ignore",
+    tesseract_psm: int | None = None,
+    tesseract_config: str | None = None,
+    engine: str = "tesseract",
 ) -> int:
     """
-    Run OCRmyPDF: deskew (optional) and add OCR text layer to a PDF.
-
+    Run OCR: add text layer to a PDF. Engine 'tesseract' (OCRmyPDF) or 'paddle' (PaddleOCR, better for handwriting).
     Returns exit code: 0 on success, non-zero on failure.
     """
+    if engine == "paddle":
+        return _run_ocr_paddle(
+            input_path,
+            output_path,
+            language=language,
+            progress_bar=progress_bar,
+            pages=pages,
+            save_text=save_text,
+        )
+
     _ensure_tesseract_on_path()
     _ensure_ghostscript_on_path()
 
     import shutil
     import ocrmypdf
-    from ocrmypdf import OcrOptions
+    from ocrmypdf import OcrOptions, TaggedPdfMode
 
     input_file = Path(input_path).resolve()
     output_file = Path(output_path).resolve()
@@ -274,6 +448,7 @@ def run_ocr(
 
     # output_type='auto': try PDF/A without Ghostscript; fallback keeps OCR text layer
     # fpdf2 renderer is OCRmyPDF's main path and most reliable for searchable text
+    tagged_mode = getattr(TaggedPdfMode, tagged_pdf_mode, TaggedPdfMode.ignore)
     options = OcrOptions(
         input_file=input_file,
         output_file=output_file,
@@ -286,9 +461,17 @@ def run_ocr(
         force_ocr=force_ocr,
         optimize=optimize_level,
         pages=pages,
+        tagged_pdf_mode=tagged_mode,
     )
+    update = {}
     if jobs is not None:
-        options = options.model_copy(update={"jobs": jobs})
+        update["jobs"] = jobs
+    if tesseract_psm is not None:
+        update["tesseract_pagesegmode"] = tesseract_psm
+    if tesseract_config:
+        update["tesseract_config"] = [tesseract_config]
+    if update:
+        options = options.model_copy(update=update)
 
     if use_cli:
         result = _run_ocrmypdf_cli(
@@ -302,6 +485,9 @@ def run_ocr(
             progress_bar=progress_bar,
             jobs=jobs,
             pages=pages,
+            tagged_pdf_mode=tagged_pdf_mode,
+            tesseract_psm=tesseract_psm,
+            tesseract_config=tesseract_config,
         )
     else:
         try:
@@ -369,18 +555,24 @@ def main() -> None:
         epilog="""
 Examples:
   python pdfocr.py -i scanned.pdf -o searchable.pdf
-  python pdfocr.py -i scanned.pdf -O              # -> scanned_O.pdf in same dir
+  python pdfocr.py -i scanned.pdf -O              # -> scanned_ext.pdf in same dir
   python pdfocr.py -i scanned.pdf -T             # also write scanned.txt (OCR text)
   python pdfocr.py -i scanned.pdf -o out.pdf --no-deskew
   python pdfocr.py -i scanned.pdf -o out.pdf -l eng+fra
+  python pdfocr.py -d ./pdfs                     # OCR each PDF in dir -> <name>_ext.pdf
+  python pdfocr.py -d ./pdfs -r -T              # recursive, and save .txt per file
+  python pdfocr.py -i form.pdf -O -hw         # better for handwritten fill-in (PSM 11)
+  python pdfocr.py -i form.pdf -O --engine paddle   # PaddleOCR (detection+recognition, good for handwriting)
         """,
     )
-    parser.add_argument("-i", "--input", required=True, help="Input PDF (scanned/image PDF)")
-    parser.add_argument("-o", "--output", default="ocr_output.pdf", help="Output searchable PDF (default: ocr_output.pdf)")
-    parser.add_argument("-O", "--output-same-dir", dest="output_same_dir", action="store_true", help="Save output in same dir as input, filename <name>_O.pdf (e.g. doc.pdf -> doc_O.pdf)")
+    parser.add_argument("-i", "--input", help="Input PDF (scanned/image PDF). Required unless -d is used.")
+    parser.add_argument("-o", "--output", default="ocr_output.pdf", help="Output searchable PDF (default: ocr_output.pdf; ignored with -d)")
+    parser.add_argument("-d", "--directory", metavar="DIR", help="OCR each PDF in DIR; output <name>_ext.pdf in same dir. Skips *_ext.pdf (already processed).")
+    parser.add_argument("-r", "--recursive", action="store_true", help="With -d: process subdirectories recursively")
+    parser.add_argument("-O", "--output-same-dir", dest="output_same_dir", action="store_true", help="Save output in same dir as input, filename <name>_ext.pdf (default when using -d)")
     parser.add_argument("-T", "--text", dest="save_text", action="store_true", help="Save extracted text to <input_stem>.txt in same dir as input")
     parser.add_argument("--no-deskew", action="store_true", help="Disable deskew (deskew is on by default)")
-    parser.add_argument("-l", "--language", default="eng", help="Tesseract language code(s), e.g. eng or eng+fra (default: eng)")
+    parser.add_argument("-l", "--language", default="eng", help="Language: eng, fra, ch, etc. (default: eng)")
     parser.add_argument("-j", "--jobs", type=int, default=None, help="Max parallel jobs (default: auto). Lower this for 1000+ page PDFs if you run out of memory.")
     parser.add_argument("-p", "--pages", type=str, default=None, metavar="RANGES", help="OCR only these pages: e.g. 1-10, 1,3,5, 20-25 (1-based). Other pages are copied unchanged.")
     parser.add_argument("--optimize", type=int, default=None, choices=[0, 1, 2, 3], metavar="N", help="Image optimization 0-3 (default: 1 if Ghostscript found). 2-3 need pngquant (e.g. choco install pngquant).")
@@ -404,30 +596,122 @@ Examples:
         default=True,
         help="Run ocrmypdf via Python API instead of subprocess (subprocess is default and produces searchable PDFs reliably).",
     )
-    args = parser.parse_args()
-
-    if args.output_same_dir:
-        inp = Path(args.input).resolve()
-        output_path = str(inp.parent / f"{inp.stem}_O.pdf")
-    else:
-        output_path = args.output
-
-    exit_code = run_ocr(
-        input_path=args.input,
-        output_path=output_path,
-        deskew=not args.no_deskew,
-        language=args.language,
-        jobs=args.jobs,
-        progress_bar=not args.no_progress,
-        redo_ocr=args.force_overwrite,
-        force_ocr=args.force_ocr,
-        pdf_renderer=args.renderer,
-        use_cli=args.use_cli,
-        pages=args.pages,
-        optimize=args.optimize,
-        save_text=args.save_text,
+    parser.add_argument(
+        "--tagged-pdf-mode",
+        dest="tagged_pdf_mode",
+        choices=("default", "ignore"),
+        default="ignore",
+        help="Tagged PDFs (e.g. from Office): default=error, ignore=process anyway (default: ignore)",
     )
-    sys.exit(exit_code)
+    parser.add_argument(
+        "--psm",
+        dest="tesseract_psm",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Tesseract page segmentation mode (0-13). 6=block (default), 11=sparse text (helps handwritten/forms). Use -hw/--handwriting to set 11.",
+    )
+    parser.add_argument(
+        "--tesseract-config",
+        dest="tesseract_config",
+        default=None,
+        metavar="FILE",
+        help="Path to Tesseract config file (e.g. to relax dictionary for handwriting).",
+    )
+    parser.add_argument(
+        "-hw", "--handwriting",
+        action="store_true",
+        help="Optimize for documents with handwritten parts: use PSM 11 (sparse text). Tesseract is still best for print; handwriting may be imperfect.",
+    )
+    parser.add_argument(
+        "--engine",
+        choices=("tesseract", "paddle"),
+        default="tesseract",
+        help="OCR engine: tesseract (default, OCRmyPDF) or paddle (PaddleOCR; better for handwritten parts). Paddle requires: pip install 'doctools[paddle]'",
+    )
+    args = parser.parse_args()
+    if args.handwriting and args.tesseract_psm is None:
+        args.tesseract_psm = 11
+
+    if args.directory:
+        dir_path = Path(args.directory).resolve()
+        if not dir_path.is_dir():
+            print(f"Error: Not a directory: {args.directory}", file=sys.stderr)
+            sys.exit(1)
+        pattern = "**/*.pdf" if args.recursive else "*.pdf"
+        pdf_files = sorted(dir_path.glob(pattern))
+        pdf_files = [
+            p for p in pdf_files
+            if p.is_file() and not p.stem.endswith("_ext")
+        ]
+        if not pdf_files:
+            print(f"No PDF files found in {args.directory}", file=sys.stderr)
+            sys.exit(1)
+        if args.engine == "paddle":
+            missing = _paddle_engine_available()
+            if missing:
+                print(
+                    f"PaddleOCR engine requires '{missing}'. Install the optional dependency:\n"
+                    "  pip install 'doctools[paddle]'",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+        failed = 0
+        for pdf_path in pdf_files:
+            out_path = pdf_path.parent / f"{pdf_path.stem}_ext.pdf"
+            print(f"OCR: {pdf_path} -> {out_path}", file=sys.stderr)
+            code = run_ocr(
+                input_path=str(pdf_path),
+                output_path=str(out_path),
+                deskew=not args.no_deskew,
+                language=args.language,
+                jobs=args.jobs,
+                progress_bar=not args.no_progress,
+                redo_ocr=args.force_overwrite,
+                force_ocr=args.force_ocr,
+                pdf_renderer=args.renderer,
+                use_cli=args.use_cli,
+                pages=args.pages,
+                optimize=args.optimize,
+                save_text=args.save_text,
+                tagged_pdf_mode=args.tagged_pdf_mode,
+                tesseract_psm=args.tesseract_psm,
+                tesseract_config=args.tesseract_config,
+                engine=args.engine,
+            )
+            if code != 0:
+                failed += 1
+        print(f"Processed {len(pdf_files) - failed}/{len(pdf_files)} file(s).", file=sys.stderr)
+        sys.exit(1 if failed else 0)
+    else:
+        if not args.input:
+            parser.error("Either -i/--input or -d/--directory is required")
+        if args.output_same_dir:
+            inp = Path(args.input).resolve()
+            output_path = str(inp.parent / f"{inp.stem}_ext.pdf")
+        else:
+            output_path = args.output
+
+        exit_code = run_ocr(
+            input_path=args.input,
+            output_path=output_path,
+            deskew=not args.no_deskew,
+            language=args.language,
+            jobs=args.jobs,
+            progress_bar=not args.no_progress,
+            redo_ocr=args.force_overwrite,
+            force_ocr=args.force_ocr,
+            pdf_renderer=args.renderer,
+            use_cli=args.use_cli,
+            pages=args.pages,
+            optimize=args.optimize,
+            save_text=args.save_text,
+            tagged_pdf_mode=args.tagged_pdf_mode,
+            tesseract_psm=args.tesseract_psm,
+            tesseract_config=args.tesseract_config,
+            engine=args.engine,
+        )
+        sys.exit(exit_code)
 
 
 if __name__ == "__main__":

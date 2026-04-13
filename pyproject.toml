@@ -7,4 +7,24 @@ dependencies = [
     "pypdf",
     "ocrmypdf",
     "openai",
+    "yt-dlp",
+    "fiftyone",
+    "insightface",
+    "onnxruntime",
+    "opencv-python",
+    "numpy",
+    "scikit-learn",
+    "tqdm",
+    "python-pptx>=0.6.21",
+    "pillow>=9.0.0",
+    "openpyxl>=3.1.0",
+    "xlrd>=2.0.1",
+]
+
+[project.optional-dependencies]
+paddle = [
+    "paddleocr>=2.7.0",
+    "paddlepaddle>=2.5.0",
+    "pypdfium2>=5.0.0",
+    "pymupdf>=1.24.0",
 ]

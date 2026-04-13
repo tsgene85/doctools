@@ -53,6 +53,19 @@ def parse_page_spec(spec: str, max_page: int) -> list[int]:
     return sorted(indices)
 
 
+def _extract_page_text(reader: PdfReader, page_index: int) -> str:
+    """Extract text from a page; try layout mode if default returns empty."""
+    page = reader.pages[page_index]
+    text = page.extract_text()
+    if text and text.strip():
+        return text.strip()
+    try:
+        text = page.extract_text(extraction_mode="layout")
+    except TypeError:
+        text = None
+    return (text or "").strip()
+
+
 def _write_text_output(
     reader: PdfReader,
     indices: list[int],
@@ -62,8 +75,11 @@ def _write_text_output(
     """Write extracted page text to .txt or .json based on file extension."""
     pages_text = []
     for i in indices:
-        text = reader.pages[i].extract_text()
-        pages_text.append((i + 1, (text or "").strip()))
+        text = _extract_page_text(reader, i)
+        pages_text.append((i + 1, text))
+
+    if not any(t for _, t in pages_text):
+        print(f"Note: No text extracted from {Path(input_path).name} (may be image-only/scanned PDF).", file=sys.stderr)
 
     suffix = text_path.suffix.lower()
     if suffix == ".json":
@@ -84,7 +100,7 @@ def _write_text_output(
 def extract_pages(
     input_path: str,
     output_path: str,
-    page_spec: str,
+    page_spec: str | None,
     verbose: bool = False,
     text_output: str | None = None,
 ) -> bool:
@@ -95,7 +111,7 @@ def extract_pages(
     Args:
         input_path: Path to source PDF.
         output_path: Path for extracted PDF.
-        page_spec: Page specification (e.g. "1,3-5,8").
+        page_spec: Page specification (e.g. "1,3-5,8"); if None or empty, extract all pages.
         verbose: Print extra info.
         text_output: If set, path for text output (.txt or .json).
 
@@ -118,10 +134,13 @@ def extract_pages(
                 print("Error: PDF has no pages.", file=sys.stderr)
                 return False
 
-            indices = parse_page_spec(page_spec, total)
-            if not indices:
-                print("Error: No valid pages in specification.", file=sys.stderr)
-                return False
+            if page_spec is None or not page_spec.strip():
+                indices = list(range(total))
+            else:
+                indices = parse_page_spec(page_spec, total)
+                if not indices:
+                    print("Error: No valid pages in specification.", file=sys.stderr)
+                    return False
 
             if text_output:
                 _write_text_output(reader, indices, Path(text_output), input_path)
@@ -165,22 +184,57 @@ Examples:
   # Also extract text to JSON or TXT
   python pdfextract.py -i document.pdf -o out.pdf -p 1-5 -t out.json
   python pdfextract.py -i document.pdf -o out.pdf -p 1-5 -t out.txt
+
+  # Process all PDFs in a directory (output: name_ext.pdf; -t creates name_ext.txt per file)
+  python pdfextract.py -d ./pdfs -p 1-3
+
+  # Process directory recursively, with text extraction for each PDF
+  python pdfextract.py -d ./pdfs -p 1-5 -t -r
         """,
     )
-    parser.add_argument("-i", "--input", required=True, help="Input PDF file")
-    parser.add_argument("-o", "--output", default="extracted.pdf", help="Output PDF file (default: extracted.pdf)")
+    parser.add_argument("-i", "--input", help="Input PDF file (required if not using -d)")
+    parser.add_argument("-o", "--output", default="extracted.pdf", help="Output PDF file (default: extracted.pdf; ignored with -d)")
+    parser.add_argument("-d", "--directory", metavar="DIR", help="Process each PDF in DIR; output files get _ext suffix (e.g. doc.pdf -> doc_ext.pdf)")
+    parser.add_argument("-r", "--recursive", action="store_true", help="With -d: process subdirectories recursively")
     parser.add_argument(
         "-p",
         "--pages",
-        required=True,
-        help="Pages to extract: single (1,3,5), range (2-7), or mixed (1,3-5,8)",
+        default=None,
+        help="Pages to extract: single (1,3,5), range (2-7), or mixed (1,3-5,8); omit to extract all pages",
     )
-    parser.add_argument("-t", "--text", dest="text_output", metavar="FILE", help="Also extract text to FILE (.txt or .json)")
+    parser.add_argument("-t", "-T", "--text", dest="text_output", metavar="FILE", nargs="?", const="", default=None, help="Also extract text; with -d create stem.txt for each PDF (same name as PDF); otherwise FILE (.txt or .json)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     args = parser.parse_args()
 
-    ok = extract_pages(args.input, args.output, args.pages, args.verbose, args.text_output)
-    sys.exit(0 if ok else 1)
+    if args.directory:
+        dir_path = Path(args.directory)
+        if not dir_path.is_dir():
+            print(f"Error: Not a directory: {args.directory}", file=sys.stderr)
+            sys.exit(1)
+        pattern = "**/*.pdf" if args.recursive else "*.pdf"
+        pdf_files = sorted(dir_path.glob(pattern))
+        pdf_files = [p for p in pdf_files if p.is_file()]
+        if not pdf_files:
+            print(f"No PDF files found in {args.directory}", file=sys.stderr)
+            sys.exit(1)
+        ok_count = 0
+        for pdf_path in pdf_files:
+            out_pdf = pdf_path.parent / f"{pdf_path.stem}_ext{pdf_path.suffix}"
+            text_path = None
+            if args.text_output is not None:
+                text_path = str(pdf_path.parent / f"{pdf_path.stem}.txt")
+            if args.verbose:
+                print(f"Processing {pdf_path} -> {out_pdf}")
+            if extract_pages(str(pdf_path), str(out_pdf), args.pages, args.verbose, text_path):
+                ok_count += 1
+        print(f"Processed {ok_count}/{len(pdf_files)} file(s)")
+        sys.exit(0 if ok_count == len(pdf_files) else 1)
+    else:
+        if not args.input:
+            parser.error("Either -i/--input or -d/--directory is required")
+        text_opt = args.text_output if args.text_output else None
+        ok = extract_pages(args.input, args.output, args.pages, args.verbose, text_opt)
+        sys.exit(0 if ok else 1)
 
 
 if __name__ == "__main__":

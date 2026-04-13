@@ -1,3 +1,10 @@
+#Personal files:
+IM80/
+downloads/
+cvat/
+artifacts/
+*.zip
+
 # Virtual environments
 .venv/
 venv/
