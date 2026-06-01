@@ -10,6 +10,8 @@ Run all commands from the project root with the virtual environment activated (e
 |--------|--------|
 | **pdfmerge.py** | Merge PDFs (files or folder), list PDFs, get PDF info, merge with page ranges |
 | **pdfextract.py** | Extract specific pages from a PDF; optionally export text to .txt/.json |
+| **pdfdecrypt.py** | Remove password protection from a PDF when the password is known |
+| **pdftool.py** | Unified PDF CLI (e.g. `decrypt` subcommand) |
 | **pdfocr.py** | Deskew and OCR scanned PDFs (Tesseract); produce searchable PDF |
 | **sumai.py** | Answer questions from a document using OpenAI; extract title/date/summary |
 | **downvideo.py** | Download a YouTube video to a folder (uses yt-dlp, optional ffmpeg) |
@@ -68,6 +70,26 @@ python pdfextract.py -i document.pdf -o out.pdf -p 1-5 -t out.txt -v
 ```
 
 **Options:** `-i/--input`, `-o/--output`, `-p/--pages`, `-t/--text`, `-v/--verbose`.
+
+---
+
+### pdfdecrypt.py – Remove PDF password
+
+Requires the correct open password. Output is an unencrypted PDF (same pages and metadata when possible).
+
+```bash
+python pdfdecrypt.py -h
+
+python pdfdecrypt.py -i locked.pdf -o unlocked.pdf -p secret
+python pdfdecrypt.py -i locked.pdf -O -p secret          # -> locked_decrypted.pdf
+python pdfdecrypt.py -d ./pdfs -p secret -v              # each -> stem_decrypted.pdf
+
+# Same via pdftool
+python pdftool.py -h
+python pdftool.py decrypt -i locked.pdf -o unlocked.pdf -p secret
+```
+
+**Options:** `-i/--input`, `-o/--output`, `-p/--password`, `-O/--output-same-dir`, `-d/--directory`, `-r/--recursive`, `-v/--verbose`. Password can also come from `PDF_PASSWORD` or an interactive prompt.
 
 ---
 
