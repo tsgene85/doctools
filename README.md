@@ -14,6 +14,8 @@ uv sync
 
 - **pdfmerge** – Merge PDFs (files or directory), optional page ranges.
 - **pdfextract** – Extract specific pages from a PDF; optionally output text to .txt or .json.
+- **pdfdecrypt** – Remove password protection when you know the password (uses pypdf).
+- **pdftool** – Unified CLI; e.g. `python pdftool.py decrypt -h`.
 - **pdfocr** – Deskew and OCR scanned PDFs; produces a searchable PDF.
 - **sumai** – Answer a question from a text document using the OpenAI API.
 
