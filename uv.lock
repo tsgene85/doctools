@@ -1452,6 +1452,16 @@ name = "doctools"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "openpyxl" },
+    { name = "pypdf" },
+    { name = "xlrd" },
+]
+
+[package.optional-dependencies]
+ai = [
+    { name = "openai" },
+]
+all = [
     { name = "fiftyone" },
     { name = "insightface" },
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -1464,21 +1474,35 @@ dependencies = [
     { name = "onnxruntime", version = "1.24.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "openai" },
     { name = "opencv-python" },
-    { name = "openpyxl" },
     { name = "pillow", version = "11.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "pillow", version = "12.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "pypdf" },
     { name = "python-pptx" },
     { name = "scikit-learn", version = "1.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
     { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "tqdm" },
-    { name = "xlrd" },
     { name = "yt-dlp", version = "2025.10.14", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "yt-dlp", version = "2026.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
-
-[package.optional-dependencies]
+faces = [
+    { name = "fiftyone" },
+    { name = "insightface" },
+    { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "onnxruntime", version = "1.20.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "onnxruntime", version = "1.24.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "opencv-python" },
+    { name = "scikit-learn", version = "1.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "tqdm" },
+]
+ocr = [
+    { name = "ocrmypdf", version = "15.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "ocrmypdf", version = "16.13.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "ocrmypdf", version = "17.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
 paddle = [
     { name = "paddleocr" },
     { name = "paddlepaddle" },
@@ -1486,30 +1510,51 @@ paddle = [
     { name = "pymupdf", version = "1.27.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "pypdfium2" },
 ]
+ppt = [
+    { name = "pillow", version = "11.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "pillow", version = "12.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "python-pptx" },
+]
+video = [
+    { name = "yt-dlp", version = "2025.10.14", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "yt-dlp", version = "2026.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
 
 [package.metadata]
 requires-dist = [
-    { name = "fiftyone" },
-    { name = "insightface" },
-    { name = "numpy" },
-    { name = "ocrmypdf" },
-    { name = "onnxruntime" },
-    { name = "openai" },
-    { name = "opencv-python" },
+    { name = "fiftyone", marker = "extra == 'all'" },
+    { name = "fiftyone", marker = "extra == 'faces'" },
+    { name = "insightface", marker = "extra == 'all'" },
+    { name = "insightface", marker = "extra == 'faces'" },
+    { name = "numpy", marker = "extra == 'all'" },
+    { name = "numpy", marker = "extra == 'faces'" },
+    { name = "ocrmypdf", marker = "extra == 'all'" },
+    { name = "ocrmypdf", marker = "extra == 'ocr'" },
+    { name = "onnxruntime", marker = "extra == 'all'" },
+    { name = "onnxruntime", marker = "extra == 'faces'" },
+    { name = "openai", marker = "extra == 'ai'" },
+    { name = "openai", marker = "extra == 'all'" },
+    { name = "opencv-python", marker = "extra == 'all'" },
+    { name = "opencv-python", marker = "extra == 'faces'" },
     { name = "openpyxl", specifier = ">=3.1.0" },
     { name = "paddleocr", marker = "extra == 'paddle'", specifier = ">=2.7.0" },
     { name = "paddlepaddle", marker = "extra == 'paddle'", specifier = ">=2.5.0" },
-    { name = "pillow", specifier = ">=9.0.0" },
+    { name = "pillow", marker = "extra == 'all'", specifier = ">=9.0.0" },
+    { name = "pillow", marker = "extra == 'ppt'", specifier = ">=9.0.0" },
     { name = "pymupdf", marker = "extra == 'paddle'", specifier = ">=1.24.0" },
     { name = "pypdf" },
     { name = "pypdfium2", marker = "extra == 'paddle'", specifier = ">=5.0.0" },
-    { name = "python-pptx", specifier = ">=0.6.21" },
-    { name = "scikit-learn" },
-    { name = "tqdm" },
+    { name = "python-pptx", marker = "extra == 'all'", specifier = ">=0.6.21" },
+    { name = "python-pptx", marker = "extra == 'ppt'", specifier = ">=0.6.21" },
+    { name = "scikit-learn", marker = "extra == 'all'" },
+    { name = "scikit-learn", marker = "extra == 'faces'" },
+    { name = "tqdm", marker = "extra == 'all'" },
+    { name = "tqdm", marker = "extra == 'faces'" },
     { name = "xlrd", specifier = ">=2.0.1" },
-    { name = "yt-dlp" },
+    { name = "yt-dlp", marker = "extra == 'all'" },
+    { name = "yt-dlp", marker = "extra == 'video'" },
 ]
-provides-extras = ["paddle"]
+provides-extras = ["ocr", "ai", "ppt", "faces", "video", "paddle", "all"]
 
 [[package]]
 name = "easydict"

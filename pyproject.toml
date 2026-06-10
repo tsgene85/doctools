@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "doctools"
 version = "0.1.0"
@@ -5,9 +9,22 @@ description = "PDF merge and doc tools"
 requires-python = ">=3.9"
 dependencies = [
     "pypdf",
+    "openpyxl>=3.1.0",
+    "xlrd>=2.0.1",
+]
+
+[project.optional-dependencies]
+ocr = [
     "ocrmypdf",
+]
+ai = [
     "openai",
-    "yt-dlp",
+]
+ppt = [
+    "python-pptx>=0.6.21",
+    "pillow>=9.0.0",
+]
+faces = [
     "fiftyone",
     "insightface",
     "onnxruntime",
@@ -15,16 +32,33 @@ dependencies = [
     "numpy",
     "scikit-learn",
     "tqdm",
-    "python-pptx>=0.6.21",
-    "pillow>=9.0.0",
-    "openpyxl>=3.1.0",
-    "xlrd>=2.0.1",
 ]
-
-[project.optional-dependencies]
+video = [
+    "yt-dlp",
+]
 paddle = [
     "paddleocr>=2.7.0",
     "paddlepaddle>=2.5.0",
     "pypdfium2>=5.0.0",
     "pymupdf>=1.24.0",
 ]
+all = [
+    "ocrmypdf",
+    "openai",
+    "python-pptx>=0.6.21",
+    "pillow>=9.0.0",
+    "fiftyone",
+    "insightface",
+    "onnxruntime",
+    "opencv-python",
+    "numpy",
+    "scikit-learn",
+    "tqdm",
+    "yt-dlp",
+]
+
+[tool.uv]
+default-groups = []
+
+[tool.setuptools]
+packages = []
