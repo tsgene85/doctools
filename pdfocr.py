@@ -9,8 +9,11 @@ import os
 import sys
 from pathlib import Path
 
-# PaddlePaddle 3.3+ CPU: disable OneDNN to avoid ConvertPirAttribute2RuntimeAttribute error
-os.environ["FLAGS_use_mkldnn"] = "0"
+# PaddlePaddle 3.3+ CPU: disable oneDNN/PIR paths that crash with ConvertPirAttribute2RuntimeAttribute
+os.environ.setdefault("FLAGS_use_mkldnn", "0")
+os.environ.setdefault("FLAGS_enable_pir_api", "0")
+os.environ.setdefault("PADDLE_PDX_ENABLE_MKLDNN_BYDEFAULT", "0")
+os.environ.setdefault("PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK", "True")
 
 
 def _tesseract_candidate_paths() -> list[Path]:
@@ -132,6 +135,27 @@ def _ensure_ghostscript_on_path() -> None:
         os.environ["PATH"] = extra + os.pathsep + os.environ.get("PATH", "")
 
 
+def _require_ocrmypdf():
+    """
+    Import OCRmyPDF lazily and return required symbols.
+    Returns tuple (ocrmypdf_module, OcrOptions, TaggedPdfMode) or None on missing dependency.
+    """
+    try:
+        import ocrmypdf
+        from ocrmypdf import OcrOptions, TaggedPdfMode
+
+        return ocrmypdf, OcrOptions, TaggedPdfMode
+    except ImportError:
+        print(
+            "OCRmyPDF is required for the default tesseract engine.\n"
+            "Install one of:\n"
+            "  pip install -e \".[ocr]\"\n"
+            "  pip install ocrmypdf",
+            file=sys.stderr,
+        )
+        return None
+
+
 def _run_ocrmypdf_cli(
     input_file: Path,
     output_file: Path,
@@ -227,6 +251,288 @@ def _paddle_engine_available() -> str | None:
     return None
 
 
+def _parse_pages_arg(pages: str | None, total_pages: int) -> list[int]:
+    """Parse 1-based page ranges (e.g. 1-3,5) into 0-based indexes."""
+    if pages is None:
+        return list(range(total_pages))
+    selected: set[int] = set()
+    try:
+        for part in pages.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            if "-" in part:
+                a_raw, b_raw = part.split("-", 1)
+                a = int(a_raw.strip())
+                b = int(b_raw.strip())
+                if a > b:
+                    a, b = b, a
+                selected.update(range(a, b + 1))
+            else:
+                selected.add(int(part))
+    except ValueError as exc:
+        raise ValueError(f"Invalid page range '{pages}'. Use values like 1-3,5,8.") from exc
+    page_indices = sorted(p - 1 for p in selected if 1 <= p <= total_pages)
+    return page_indices
+
+
+def _lang_to_paddle(language: str) -> str:
+    lang_map = {
+        "eng": "en",
+        "en": "en",
+        "fra": "fr",
+        "fr": "fr",
+        "chi": "ch",
+        "ch": "ch",
+    }
+    return lang_map.get(language.split("+")[0].strip().lower(), "en")
+
+
+def _create_paddle_ocr(language: str):
+    from paddleocr import PaddleOCR
+
+    paddle_lang = _lang_to_paddle(language)
+    # enable_mkldnn=False avoids oneDNN+PIR crash on PaddlePaddle 3.3+ (see Paddle issue #77340)
+    mkldnn_kw = {"enable_mkldnn": False}
+    try:
+        return PaddleOCR(use_textline_orientation=True, lang=paddle_lang, **mkldnn_kw)
+    except TypeError:
+        try:
+            return PaddleOCR(use_angle_cls=True, lang=paddle_lang, show_log=False, **mkldnn_kw)
+        except TypeError:
+            return PaddleOCR(use_angle_cls=True, lang=paddle_lang, show_log=False)
+
+
+def _paddle_box_to_xyxy(box) -> tuple[float, float, float, float]:
+    """Normalize a Paddle box (polygon or xyxy array) to (x0, y0, x1, y1) in image pixels."""
+    if hasattr(box, "shape") and len(box.shape) == 1 and box.shape[0] == 4:
+        x0, y0, x1, y1 = float(box[0]), float(box[1]), float(box[2]), float(box[3])
+        return x0, y0, x1, y1
+    xs = [float(p[0]) for p in box]
+    ys = [float(p[1]) for p in box]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _paddle_predict_to_lines(predict_output) -> list[tuple[tuple[float, float, float, float], str, float]]:
+    """
+    Parse paddleocr.predict() output into (x0,y0,x1,y1, text, score) tuples in image pixels.
+    Supports legacy [[box, (text, conf)], ...] and paddlex OCRResult dicts.
+    """
+    if not predict_output:
+        return []
+    page = predict_output[0] if isinstance(predict_output, list) else predict_output
+
+    lines: list[tuple[tuple[float, float, float, float], str, float]] = []
+    if isinstance(page, dict) or (hasattr(page, "get") and page.get("rec_texts") is not None):
+        data = dict(page) if not isinstance(page, dict) else page
+        texts = data.get("rec_texts") or []
+        scores = data.get("rec_scores") or []
+        polys = data.get("rec_polys")
+        boxes = data.get("rec_boxes")
+        for i, text in enumerate(texts):
+            if not text or not str(text).strip():
+                continue
+            conf = float(scores[i]) if i < len(scores) else 0.0
+            if polys is not None and i < len(polys):
+                xyxy = _paddle_box_to_xyxy(polys[i])
+            elif boxes is not None and i < len(boxes):
+                xyxy = _paddle_box_to_xyxy(boxes[i])
+            else:
+                continue
+            lines.append((xyxy, str(text).strip(), conf))
+        return lines
+
+    if isinstance(page, list):
+        for line in page:
+            try:
+                box, rec = line
+                if isinstance(rec, tuple) and len(rec) >= 2:
+                    text, conf = rec[0], rec[1]
+                else:
+                    text, conf = rec, 0.0
+                if not text or not str(text).strip():
+                    continue
+                lines.append((_paddle_box_to_xyxy(box), str(text).strip(), float(conf or 0)))
+            except (ValueError, TypeError, IndexError):
+                continue
+    return lines
+
+
+def _row_text_boxes(
+    boxes: list[tuple[float, float, float, float, str]],
+    y_merge_tolerance: float = 10.0,
+) -> list[list[tuple[float, float, float, float, str]]]:
+    """Group OCR boxes into visual rows using y-center proximity."""
+    if not boxes:
+        return []
+    rows: list[list[tuple[float, float, float, float, str]]] = []
+    for box in sorted(boxes, key=lambda b: ((b[1] + b[3]) / 2.0, b[0])):
+        y_center = (box[1] + box[3]) / 2.0
+        placed = False
+        for row in rows:
+            row_y = sum((b[1] + b[3]) / 2.0 for b in row) / len(row)
+            if abs(y_center - row_y) <= y_merge_tolerance:
+                row.append(box)
+                placed = True
+                break
+        if not placed:
+            rows.append([box])
+    for row in rows:
+        row.sort(key=lambda b: b[0])
+    return rows
+
+
+def _rect_overlap(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
+    ax0, ay0, ax1, ay1 = a
+    bx0, by0, bx1, by1 = b
+    x0 = max(ax0, bx0)
+    y0 = max(ay0, by0)
+    x1 = min(ax1, bx1)
+    y1 = min(ay1, by1)
+    if x1 <= x0 or y1 <= y0:
+        return 0.0
+    return (x1 - x0) * (y1 - y0)
+
+
+def _add_fillable_fields(
+    pdf_path: Path,
+    *,
+    language: str = "eng",
+    pages: str | None = None,
+    progress_bar: bool = True,
+) -> tuple[int, str]:
+    """
+    Best-effort AcroForm generation for scanned forms.
+    Detects OCR rows and places text widgets in blank space to the right of labels.
+    Returns: (added_field_count, message)
+    """
+    missing = _paddle_engine_available()
+    if missing:
+        return (
+            0,
+            "Fillable form generation requires Paddle dependencies. Install: "
+            "pip install 'doctools[paddle]'",
+        )
+    try:
+        import fitz  # PyMuPDF
+        import numpy as np
+    except ImportError:
+        return (
+            0,
+            "Fillable form generation requires PyMuPDF and numpy. Install: "
+            "pip install 'doctools[paddle]'",
+        )
+
+    try:
+        ocr = _create_paddle_ocr(language)
+        doc = fitz.open(str(pdf_path))
+        total_pages = doc.page_count
+        page_indices = _parse_pages_arg(pages, total_pages)
+    except ValueError as exc:
+        return (0, str(exc))
+    except Exception as exc:
+        return (0, f"Unable to initialize fillable-form OCR pass: {exc}")
+
+    if not page_indices:
+        doc.close()
+        return (0, "No pages selected for fillable-form processing.")
+
+    added = 0
+    scale = 2.0
+    margin_right = 36.0
+    min_field_width = 90.0
+    right_gap = 8.0
+    field_height_min = 14.0
+    field_height_max = 28.0
+
+    try:
+        for page_pos, page_idx in enumerate(page_indices, start=1):
+            page = doc[page_idx]
+            page_w = float(page.rect.width)
+            pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
+            img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
+            result = ocr.predict(img)
+            boxes: list[tuple[float, float, float, float, str]] = []
+            for xyxy, text, _conf in _paddle_predict_to_lines(result):
+                x0, y0, x1, y1 = xyxy
+                x0, y0, x1, y1 = x0 / scale, y0 / scale, x1 / scale, y1 / scale
+                if x1 - x0 < 6 or y1 - y0 < 6:
+                    continue
+                boxes.append((x0, y0, x1, y1, text))
+
+            rows = _row_text_boxes(boxes)
+            for row_idx, row in enumerate(rows, start=1):
+                row_x1 = max(b[2] for b in row)
+                row_y0 = min(b[1] for b in row)
+                row_y1 = max(b[3] for b in row)
+                row_h = max(1.0, row_y1 - row_y0)
+                row_text = " ".join(b[4] for b in row).strip()
+                if not row_text:
+                    continue
+
+                available_w = (page_w - margin_right) - (row_x1 + right_gap)
+                if available_w < min_field_width:
+                    continue
+                # Heuristic: target label-like rows, or rows that leave large right-side blank.
+                label_like = (
+                    ":" in row_text
+                    or row_text.endswith("?")
+                    or row_text.lower().endswith(("name", "date", "address", "phone", "email"))
+                )
+                large_blank = available_w >= page_w * 0.30 and row_x1 <= page_w * 0.72
+                if not (label_like or large_blank):
+                    continue
+
+                rect = (
+                    row_x1 + right_gap,
+                    max(0.0, (row_y0 + row_y1) * 0.5 - min(field_height_max, max(field_height_min, row_h * 1.25)) / 2.0),
+                    page_w - margin_right,
+                    min(float(page.rect.height), (row_y0 + row_y1) * 0.5 + min(field_height_max, max(field_height_min, row_h * 1.25)) / 2.0),
+                )
+                rect_area = max(0.0, (rect[2] - rect[0]) * (rect[3] - rect[1]))
+                if rect_area <= 0:
+                    continue
+                overlap_area = 0.0
+                for b in boxes:
+                    overlap_area += _rect_overlap(rect, (b[0], b[1], b[2], b[3]))
+                if overlap_area > rect_area * 0.18:
+                    continue
+
+                widget = fitz.Widget()
+                widget.field_name = f"field_p{page_idx + 1}_{row_idx}"
+                widget.field_label = row_text[:96]
+                widget.field_type = fitz.PDF_WIDGET_TYPE_TEXT
+                widget.rect = fitz.Rect(rect[0], rect[1], rect[2], rect[3])
+                widget.field_value = ""
+                page.add_widget(widget)
+                added += 1
+
+            if progress_bar and len(page_indices) > 1:
+                print(
+                    f"  Fillable form pass page {page_pos}/{len(page_indices)}",
+                    file=sys.stderr,
+                )
+    except Exception as exc:
+        doc.close()
+        return (added, f"Fillable form generation failed: {exc}")
+
+    try:
+        tmp_path = pdf_path.with_name(f"{pdf_path.stem}.fillable.tmp.pdf")
+        doc.save(str(tmp_path), incremental=False, deflate=True, garbage=4)
+        doc.close()
+        os.replace(tmp_path, pdf_path)
+    except Exception as exc:
+        return (added, f"Failed to write fillable PDF output: {exc}")
+
+    if added == 0:
+        return (
+            0,
+            "No likely form fields were detected. Try cleaner scans or use "
+            "--engine paddle and/or -hw for better form text detection.",
+        )
+    return (added, f"Added {added} fillable text field(s).")
+
+
 def _run_ocr_paddle(
     input_path: str,
     output_path: str,
@@ -241,7 +547,10 @@ def _run_ocr_paddle(
     Requires: pip install doctools[paddle]
     """
     try:
-        from paddleocr import PaddleOCR
+        import importlib.util
+
+        if importlib.util.find_spec("paddleocr") is None:
+            raise ImportError
     except ImportError:
         print(
             "PaddleOCR is not installed. Install the paddle optional dependency:\n"
@@ -278,42 +587,23 @@ def _run_ocr_paddle(
         print("Error: Input and output must be different files.", file=sys.stderr)
         return 1
 
-    # Parse page range (1-based). None = all pages.
-    page_indices: list[int] | None = None
-    if pages:
-        # Simple "1-3" or "1,3,5" parsing
-        page_indices = []
-        for part in pages.split(","):
-            part = part.strip()
-            if "-" in part:
-                a, b = part.split("-", 1)
-                page_indices.extend(range(int(a.strip()), int(b.strip()) + 1))
-            else:
-                page_indices.append(int(part))
-        page_indices = [p - 1 for p in page_indices]  # 0-based
-
-    # Map language to PaddleOCR lang code
-    lang_map = {"eng": "en", "en": "en", "fra": "fr", "fr": "fr", "chi": "ch", "ch": "ch"}
-    paddle_lang = lang_map.get(language.split("+")[0].strip().lower(), "en")
-
     # Newer PaddleOCR: use_textline_orientation (replaces use_angle_cls), show_log removed
-    try:
-        ocr = PaddleOCR(use_textline_orientation=True, lang=paddle_lang)
-    except TypeError:
-        ocr = PaddleOCR(use_angle_cls=True, lang=paddle_lang, show_log=False)
+    ocr = _create_paddle_ocr(language)
     render_scale = 2  # render at 2x for better OCR
 
     doc = pdfium.PdfDocument(str(input_file))
     n_pages = len(doc)
-    if page_indices is not None:
-        page_list = [i for i in page_indices if 0 <= i < n_pages]
-    else:
-        page_list = list(range(n_pages))
+    try:
+        page_list = _parse_pages_arg(pages, n_pages)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        doc.close()
+        return 1
 
     all_page_results: list[list[tuple[float, float, str]]] = []  # per page: list of (x_pt, y_pt, text)
     for idx in page_list:
         page = doc[idx]
-        w_pt, h_pt = page.get_width(), page.get_height()
+        h_pt = page.get_height()
         bitmap = page.render(scale=render_scale)
         try:
             pil_img = bitmap.to_pil()
@@ -323,17 +613,13 @@ def _run_ocr_paddle(
         img_arr = np.array(pil_img)
         result = ocr.predict(img_arr)
         page_texts: list[tuple[float, float, str]] = []
-        if result and result[0]:
-            for line in result[0]:
-                box, (text, _conf) = line
-                if not (text and text.strip()):
-                    continue
-                # box: [[x1,y1],[x2,y2],[x3,y3],[x4,y4]] in image pixels (top-left origin)
-                x_img = (box[0][0] + box[2][0]) / 2
-                y_img = (box[0][1] + box[2][1]) / 2
-                x_pt = x_img / render_scale
-                y_pt = h_pt - (y_img / render_scale)  # PDF y is from bottom
-                page_texts.append((x_pt, y_pt, text.strip()))
+        for xyxy, text, _conf in _paddle_predict_to_lines(result):
+            x0, y0, x1, y1 = xyxy
+            x_img = (x0 + x1) / 2
+            y_img = (y0 + y1) / 2
+            x_pt = x_img / render_scale
+            y_pt = h_pt - (y_img / render_scale)  # PDF y is from bottom
+            page_texts.append((x_pt, y_pt, text))
         all_page_results.append(page_texts)
         if progress_bar and len(page_list) > 1:
             print(f"  PaddleOCR page {idx + 1}/{n_pages}", file=sys.stderr)
@@ -378,13 +664,14 @@ def run_ocr(
     tesseract_psm: int | None = None,
     tesseract_config: str | None = None,
     engine: str = "tesseract",
+    fillable_form: bool = False,
 ) -> int:
     """
     Run OCR: add text layer to a PDF. Engine 'tesseract' (OCRmyPDF) or 'paddle' (PaddleOCR, better for handwriting).
     Returns exit code: 0 on success, non-zero on failure.
     """
     if engine == "paddle":
-        return _run_ocr_paddle(
+        result = _run_ocr_paddle(
             input_path,
             output_path,
             language=language,
@@ -392,13 +679,27 @@ def run_ocr(
             pages=pages,
             save_text=save_text,
         )
+        if result == 0 and fillable_form:
+            added, form_message = _add_fillable_fields(
+                Path(output_path).resolve(),
+                language=language,
+                pages=pages,
+                progress_bar=progress_bar,
+            )
+            if added:
+                print(form_message, file=sys.stderr)
+            else:
+                print(f"Note: {form_message}", file=sys.stderr)
+        return result
 
     _ensure_tesseract_on_path()
     _ensure_ghostscript_on_path()
 
     import shutil
-    import ocrmypdf
-    from ocrmypdf import OcrOptions, TaggedPdfMode
+    ocrmypdf_deps = _require_ocrmypdf()
+    if ocrmypdf_deps is None:
+        return 1
+    ocrmypdf, OcrOptions, TaggedPdfMode = ocrmypdf_deps
 
     input_file = Path(input_path).resolve()
     output_file = Path(output_path).resolve()
@@ -523,6 +824,17 @@ def run_ocr(
             return 1
 
     if result == 0:
+        if fillable_form:
+            added, form_message = _add_fillable_fields(
+                output_file,
+                language=language,
+                pages=pages,
+                progress_bar=progress_bar,
+            )
+            if added:
+                print(form_message, file=sys.stderr)
+            else:
+                print(f"Note: {form_message}", file=sys.stderr)
         print(f"Wrote searchable PDF to: {output_file}", file=sys.stderr)
         if save_text:
             _extract_text_to_file(output_file, input_file.parent / f"{input_file.stem}.txt")
@@ -557,11 +869,12 @@ Examples:
   python pdfocr.py -i scanned.pdf -o searchable.pdf
   python pdfocr.py -i scanned.pdf -O              # -> scanned_ext.pdf in same dir
   python pdfocr.py -i scanned.pdf -T             # also write scanned.txt (OCR text)
+  python pdfocr.py -i form_scan.pdf -O --fillable-form
   python pdfocr.py -i scanned.pdf -o out.pdf --no-deskew
   python pdfocr.py -i scanned.pdf -o out.pdf -l eng+fra
   python pdfocr.py -d ./pdfs                     # OCR each PDF in dir -> <name>_ext.pdf
   python pdfocr.py -d ./pdfs -r -T              # recursive, and save .txt per file
-  python pdfocr.py -i form.pdf -O -hw         # better for handwritten fill-in (PSM 11)
+  python pdfocr.py -i form.pdf -O -hw --fillable-form  # better for handwritten fill-in + fields
   python pdfocr.py -i form.pdf -O --engine paddle   # PaddleOCR (detection+recognition, good for handwriting)
         """,
     )
@@ -627,11 +940,35 @@ Examples:
         "--engine",
         choices=("tesseract", "paddle"),
         default="tesseract",
-        help="OCR engine: tesseract (default, OCRmyPDF) or paddle (PaddleOCR; better for handwritten parts). Paddle requires: pip install 'doctools[paddle]'",
+        help="OCR engine: tesseract (default, OCRmyPDF) or paddle (PaddleOCR; better for handwritten parts). --fillable-form auto-selects paddle when available. Paddle requires: pip install 'doctools[paddle]'",
+    )
+    parser.add_argument(
+        "--fillable-form",
+        action="store_true",
+        help="After OCR, attempt to add fillable AcroForm text fields for scanned form-style PDFs (best effort; auto-switches engine to paddle if available).",
     )
     args = parser.parse_args()
     if args.handwriting and args.tesseract_psm is None:
         args.tesseract_psm = 11
+
+    if args.fillable_form:
+        missing = _paddle_engine_available()
+        if missing:
+            print(
+                "Error: --fillable-form requires Paddle dependencies.\n"
+                "Install with:\n"
+                "  pip install -e \".[paddle]\"\n"
+                "Then run this command again.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        if args.engine != "paddle":
+            print(
+                "Note: --fillable-form requires Paddle-based form-field detection.\n"
+                "Auto-selecting: --engine paddle",
+                file=sys.stderr,
+            )
+            args.engine = "paddle"
 
     if args.directory:
         dir_path = Path(args.directory).resolve()
@@ -678,6 +1015,7 @@ Examples:
                 tesseract_psm=args.tesseract_psm,
                 tesseract_config=args.tesseract_config,
                 engine=args.engine,
+                fillable_form=args.fillable_form,
             )
             if code != 0:
                 failed += 1
@@ -710,9 +1048,11 @@ Examples:
             tesseract_psm=args.tesseract_psm,
             tesseract_config=args.tesseract_config,
             engine=args.engine,
+            fillable_form=args.fillable_form,
         )
         sys.exit(exit_code)
 
 
 if __name__ == "__main__":
     main()
+

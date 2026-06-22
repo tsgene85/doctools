@@ -8,6 +8,12 @@ PDF merge, extract, and deskew/OCR tools.
 uv venv .venv
 uv sync
 # Windows: .venv\Scripts\activate
+# Common add-ons (uv groups)
+uv sync --group common
+uv sync --group ocr --group paddle
+uv sync --group ai --group ppt
+# Install all optional extras (includes faces/insightface)
+uv sync --all-extras
 ```
 
 ## Tools

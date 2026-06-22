@@ -1450,8 +1450,9 @@ wheels = [
 [[package]]
 name = "doctools"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "openpyxl" },
     { name = "pypdf" },
     { name = "xlrd" },
@@ -1474,8 +1475,13 @@ all = [
     { name = "onnxruntime", version = "1.24.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "openai" },
     { name = "opencv-python" },
+    { name = "paddleocr" },
+    { name = "paddlepaddle" },
     { name = "pillow", version = "11.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "pillow", version = "12.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "pymupdf", version = "1.26.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "pymupdf", version = "1.27.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "pypdfium2" },
     { name = "python-pptx" },
     { name = "scikit-learn", version = "1.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
@@ -1520,8 +1526,93 @@ video = [
     { name = "yt-dlp", version = "2026.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
 
+[package.dev-dependencies]
+ai = [
+    { name = "openai" },
+]
+all = [
+    { name = "fiftyone" },
+    { name = "insightface" },
+    { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "ocrmypdf", version = "15.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "ocrmypdf", version = "16.13.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "ocrmypdf", version = "17.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "onnxruntime", version = "1.20.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "onnxruntime", version = "1.24.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "openai" },
+    { name = "opencv-python" },
+    { name = "paddleocr" },
+    { name = "paddlepaddle" },
+    { name = "pillow", version = "11.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "pillow", version = "12.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "pymupdf", version = "1.26.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "pymupdf", version = "1.27.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "pypdfium2" },
+    { name = "python-pptx" },
+    { name = "scikit-learn", version = "1.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "tqdm" },
+    { name = "yt-dlp", version = "2025.10.14", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "yt-dlp", version = "2026.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
+common = [
+    { name = "ocrmypdf", version = "15.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "ocrmypdf", version = "16.13.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "ocrmypdf", version = "17.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "openai" },
+    { name = "paddleocr" },
+    { name = "paddlepaddle" },
+    { name = "pillow", version = "11.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "pillow", version = "12.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "pymupdf", version = "1.26.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "pymupdf", version = "1.27.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "pypdfium2" },
+    { name = "python-pptx" },
+    { name = "yt-dlp", version = "2025.10.14", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "yt-dlp", version = "2026.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
+faces = [
+    { name = "fiftyone" },
+    { name = "insightface" },
+    { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "onnxruntime", version = "1.20.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "onnxruntime", version = "1.24.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "opencv-python" },
+    { name = "scikit-learn", version = "1.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "tqdm" },
+]
+ocr = [
+    { name = "ocrmypdf", version = "15.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "ocrmypdf", version = "16.13.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.10.*'" },
+    { name = "ocrmypdf", version = "17.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+paddle = [
+    { name = "paddleocr" },
+    { name = "paddlepaddle" },
+    { name = "pymupdf", version = "1.26.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "pymupdf", version = "1.27.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "pypdfium2" },
+]
+ppt = [
+    { name = "pillow", version = "11.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "pillow", version = "12.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "python-pptx" },
+]
+video = [
+    { name = "yt-dlp", version = "2025.10.14", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "yt-dlp", version = "2026.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
+
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=3.1" },
     { name = "fiftyone", marker = "extra == 'all'" },
     { name = "fiftyone", marker = "extra == 'faces'" },
     { name = "insightface", marker = "extra == 'all'" },
@@ -1537,12 +1628,16 @@ requires-dist = [
     { name = "opencv-python", marker = "extra == 'all'" },
     { name = "opencv-python", marker = "extra == 'faces'" },
     { name = "openpyxl", specifier = ">=3.1.0" },
+    { name = "paddleocr", marker = "extra == 'all'", specifier = ">=2.7.0" },
     { name = "paddleocr", marker = "extra == 'paddle'", specifier = ">=2.7.0" },
-    { name = "paddlepaddle", marker = "extra == 'paddle'", specifier = ">=2.5.0" },
+    { name = "paddlepaddle", marker = "extra == 'all'", specifier = ">=2.5.0,<3.3" },
+    { name = "paddlepaddle", marker = "extra == 'paddle'", specifier = ">=2.5.0,<3.3" },
     { name = "pillow", marker = "extra == 'all'", specifier = ">=9.0.0" },
     { name = "pillow", marker = "extra == 'ppt'", specifier = ">=9.0.0" },
+    { name = "pymupdf", marker = "extra == 'all'", specifier = ">=1.24.0" },
     { name = "pymupdf", marker = "extra == 'paddle'", specifier = ">=1.24.0" },
     { name = "pypdf" },
+    { name = "pypdfium2", marker = "extra == 'all'", specifier = ">=5.0.0" },
     { name = "pypdfium2", marker = "extra == 'paddle'", specifier = ">=5.0.0" },
     { name = "python-pptx", marker = "extra == 'all'", specifier = ">=0.6.21" },
     { name = "python-pptx", marker = "extra == 'ppt'", specifier = ">=0.6.21" },
@@ -1555,6 +1650,60 @@ requires-dist = [
     { name = "yt-dlp", marker = "extra == 'video'" },
 ]
 provides-extras = ["ocr", "ai", "ppt", "faces", "video", "paddle", "all"]
+
+[package.metadata.requires-dev]
+ai = [{ name = "openai" }]
+all = [
+    { name = "fiftyone" },
+    { name = "insightface" },
+    { name = "numpy" },
+    { name = "ocrmypdf" },
+    { name = "onnxruntime" },
+    { name = "openai" },
+    { name = "opencv-python" },
+    { name = "paddleocr", specifier = ">=2.7.0" },
+    { name = "paddlepaddle", specifier = ">=2.5.0,<3.3" },
+    { name = "pillow", specifier = ">=9.0.0" },
+    { name = "pymupdf", specifier = ">=1.24.0" },
+    { name = "pypdfium2", specifier = ">=5.0.0" },
+    { name = "python-pptx", specifier = ">=0.6.21" },
+    { name = "scikit-learn" },
+    { name = "tqdm" },
+    { name = "yt-dlp" },
+]
+common = [
+    { name = "ocrmypdf" },
+    { name = "openai" },
+    { name = "paddleocr", specifier = ">=2.7.0" },
+    { name = "paddlepaddle", specifier = ">=2.5.0,<3.3" },
+    { name = "pillow", specifier = ">=9.0.0" },
+    { name = "pymupdf", specifier = ">=1.24.0" },
+    { name = "pypdfium2", specifier = ">=5.0.0" },
+    { name = "python-pptx", specifier = ">=0.6.21" },
+    { name = "yt-dlp" },
+]
+dev = []
+faces = [
+    { name = "fiftyone" },
+    { name = "insightface" },
+    { name = "numpy" },
+    { name = "onnxruntime" },
+    { name = "opencv-python" },
+    { name = "scikit-learn" },
+    { name = "tqdm" },
+]
+ocr = [{ name = "ocrmypdf" }]
+paddle = [
+    { name = "paddleocr", specifier = ">=2.7.0" },
+    { name = "paddlepaddle", specifier = ">=2.5.0,<3.3" },
+    { name = "pymupdf", specifier = ">=1.24.0" },
+    { name = "pypdfium2", specifier = ">=5.0.0" },
+]
+ppt = [
+    { name = "pillow", specifier = ">=9.0.0" },
+    { name = "python-pptx", specifier = ">=0.6.21" },
+]
+video = [{ name = "yt-dlp" }]
 
 [[package]]
 name = "easydict"
@@ -4224,7 +4373,7 @@ wheels = [
 
 [[package]]
 name = "paddlepaddle"
-version = "3.3.0"
+version = "3.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -4240,25 +4389,29 @@ dependencies = [
     { name = "protobuf", version = "6.33.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "protobuf", version = "7.34.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "safetensors" },
-    { name = "setuptools", marker = "python_full_version >= '3.12'" },
     { name = "typing-extensions" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/ac/20f5107136e903430a0a405c395d68a07a44d29002cf5af6ed7d9a46dc63/paddlepaddle-3.3.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:d7829960c98fdff2fe9be8fe5500e43a6365e31a5f1025bd1108f636361e0f1a", size = 103656753, upload-time = "2026-01-13T09:14:12.305Z" },
-    { url = "https://files.pythonhosted.org/packages/ea/d5/ce19b6c204e6180362d31baf910ed7240d488ea4e08b0f34baff55a5f7c3/paddlepaddle-3.3.0-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:2c8507b5cec35286e05ba67100edcb4e528bdd80be03d40bbac2a1396e03fc70", size = 193697833, upload-time = "2026-01-13T08:54:12.398Z" },
-    { url = "https://files.pythonhosted.org/packages/5a/4b/7aa9eed9c9cfcc882d7ba745aa13d3e7749abedaaebe1535dfb3815b45e4/paddlepaddle-3.3.0-cp310-cp310-win_amd64.whl", hash = "sha256:87a9fe86bd6f5932f09f14c2326dd1a4896bba1caac999cfcd38b93f5ead5027", size = 104257759, upload-time = "2026-01-13T09:32:17.534Z" },
-    { url = "https://files.pythonhosted.org/packages/89/a3/e137deefdde591291d971f082e3089561460934e2844ececd19bb13a8099/paddlepaddle-3.3.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:ccc6d259c75f91e0baded01f89f35d64c1bbd84477d81461bd3f6c5b7abc1918", size = 103662106, upload-time = "2026-01-13T09:16:40.689Z" },
-    { url = "https://files.pythonhosted.org/packages/64/1b/2af5dfe38f7b062ebcc89abca798288ece19dff6aaf51290bda1840ce809/paddlepaddle-3.3.0-cp311-cp311-manylinux1_x86_64.whl", hash = "sha256:a4f2e0595e827c179b4fff4278fb41a24f4abe5927ffd5efb1ace26a916145f2", size = 193703893, upload-time = "2026-01-13T08:58:01.075Z" },
-    { url = "https://files.pythonhosted.org/packages/53/62/79dd3233fd28bc7950bcabf57ee32eeb88d6c758a35111dd25af6a6fe216/paddlepaddle-3.3.0-cp311-cp311-win_amd64.whl", hash = "sha256:ad1b946dd4ea035c268dd6c5468bac9cad15baf81f2f6bd49e803858c041f4da", size = 104266905, upload-time = "2026-01-13T09:34:34.528Z" },
-    { url = "https://files.pythonhosted.org/packages/22/07/1aacbce9ad8989c621d4cbd91945dd1d6ed01b315f46f925fb4bbcabb971/paddlepaddle-3.3.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:17aab6b90d8cef2ccf893f4be82cf05e906e21fe86c40a34fea6701937d7782b", size = 103701539, upload-time = "2026-01-13T09:19:10.174Z" },
-    { url = "https://files.pythonhosted.org/packages/7e/ad/93342171c84f95331b2823c57b77de5aa80b13079927f3fdee5eee459f8b/paddlepaddle-3.3.0-cp312-cp312-manylinux1_x86_64.whl", hash = "sha256:3ee996ee2bf2d2b33e9865876fb82ff03cb7bb2246cc5aa0027edd6a9a0640eb", size = 193740207, upload-time = "2026-01-13T09:01:48.188Z" },
-    { url = "https://files.pythonhosted.org/packages/12/52/632b1013923a67cbcc778e6e1a308f3848f699f80024a737940e5e17b52a/paddlepaddle-3.3.0-cp312-cp312-win_amd64.whl", hash = "sha256:f19a6a0728103b6b6b6b85726ac39fb77277d72ffff08d66ca3a8a97f0759a02", size = 104281149, upload-time = "2026-01-13T09:36:51.506Z" },
-    { url = "https://files.pythonhosted.org/packages/1c/ea/909737cf298cdbdaa2b2a9b16961e3883802cc600f9b7dc8331e5f80e374/paddlepaddle-3.3.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:b56781354b18063f43a87f3d562ada5a4f8a437fe2312ab1032fa89ad5a54ec0", size = 103703459, upload-time = "2026-01-13T09:21:39.399Z" },
-    { url = "https://files.pythonhosted.org/packages/0d/b7/1d9e9170a5efc3a2188df6899b4279d650be222b0987cbfe0f14668b467b/paddlepaddle-3.3.0-cp313-cp313-manylinux1_x86_64.whl", hash = "sha256:88898274f5cd5e2f4ebaf5631d4c00927d9d58465a083875c224b40f9935cd39", size = 193732176, upload-time = "2026-01-13T09:05:36.068Z" },
-    { url = "https://files.pythonhosted.org/packages/8c/1c/04d8fa9181cb0ec409271ab35c496c0fd0641ba9e8ffd118d15358791f93/paddlepaddle-3.3.0-cp313-cp313-win_amd64.whl", hash = "sha256:e999a2dcdb33597f2ddf8971f4eec362bc1a21c347ffaeae9ddeea9f0f51c9dd", size = 104279406, upload-time = "2026-01-13T09:39:09.178Z" },
-    { url = "https://files.pythonhosted.org/packages/0b/8a/95d9c2d0f5f918112636cc030421ddecd1e0ef3bcffe12de2a6e94830398/paddlepaddle-3.3.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:eee13e6797fa756c10018b45e688e2c5f6e9fb56d2227b3ea0f450a9b4e045dd", size = 103656902, upload-time = "2026-01-13T09:24:07.633Z" },
-    { url = "https://files.pythonhosted.org/packages/dd/82/2d8ec1679c4340095211fd9e9e7127131ac7006d1447951d7f68530f94a4/paddlepaddle-3.3.0-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:34f9d82e69a4637369ec319eced87df32bdcca5f0d80db4aebc9ca482fc41b90", size = 193698886, upload-time = "2026-01-13T09:09:24.483Z" },
-    { url = "https://files.pythonhosted.org/packages/1b/80/4706755e86780ee8a41639465513413385ef55a22a63bda06442a2d62af5/paddlepaddle-3.3.0-cp39-cp39-win_amd64.whl", hash = "sha256:71910da7adf65ff8eed0c6623f7c75dd95cd230e2296433b8ca1588e7fcf1b9c", size = 104159265, upload-time = "2026-01-13T09:41:26.63Z" },
+    { url = "https://files.pythonhosted.org/packages/16/ef/4977a2cb4e743e340f272ee436d92f741bc2d29c5b17258b865c5792afbb/paddlepaddle-3.2.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:c1d5c5b8d15faacbe75448755a1553e289bcb77992edc42f451821ec06f9306c", size = 99457690, upload-time = "2025-11-14T13:22:50.893Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/05/0885e52c50b089e0e27e5b1a4a09cb1c97fded5b7f3d0e9b99b3b7972ee3/paddlepaddle-3.2.2-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:dcb41609f6f4bdba0404354d5f21b446467b615f5a5bf67a7c75ebc20b42c6a9", size = 189256236, upload-time = "2025-11-19T11:49:29.657Z" },
+    { url = "https://files.pythonhosted.org/packages/91/79/32a339237300b1576bd1dc07b82dcbfbc7c0395f7069483f2483ec02d688/paddlepaddle-3.2.2-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:ad47135f9861bd70de5af4e7d513ca099fa7abd5fbc5461c45f860d47b5098a2", size = 88170123, upload-time = "2025-11-19T11:15:04.118Z" },
+    { url = "https://files.pythonhosted.org/packages/81/48/fa3b67cb7b680ab67411dd1b104f3ed62cd73eeaa16670dba8986b23dad7/paddlepaddle-3.2.2-cp310-cp310-win_amd64.whl", hash = "sha256:a48825235d19f2706089c1bfaf171fe4188e55319ce0f5285aa50f73dc559ab0", size = 101714320, upload-time = "2025-11-14T13:10:44.937Z" },
+    { url = "https://files.pythonhosted.org/packages/05/3f/4d73d4435d8c594353fe04f677b7d76db364d740b82b456502da864d3023/paddlepaddle-3.2.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:91bae3026cb4097fc95c30be5d6470363dc3a1e8af77773c75a7d5d36354ad2d", size = 99460791, upload-time = "2025-11-14T13:25:09.701Z" },
+    { url = "https://files.pythonhosted.org/packages/34/e7/fbfbdc55e025fd8df34849980af427c2f07e11265a19d7cfa01cb5f3fec5/paddlepaddle-3.2.2-cp311-cp311-manylinux1_x86_64.whl", hash = "sha256:c30489fe7f4533252d54655dbe02c136818df8ec6ab241306691ed6462de0eba", size = 189257782, upload-time = "2025-11-19T11:50:33.082Z" },
+    { url = "https://files.pythonhosted.org/packages/14/a2/9e65ff57fc83cdc3eb0fe48f654d60a1fac7e72e5dc4177c1bb1804f58b9/paddlepaddle-3.2.2-cp311-cp311-manylinux2014_aarch64.whl", hash = "sha256:0a87209df4069129c817875e5caadc1a1d87b8dfd291e6da8b5141e6ac4e20b6", size = 88170289, upload-time = "2025-11-19T11:16:48.847Z" },
+    { url = "https://files.pythonhosted.org/packages/29/e8/dfbc67e971765c82b9e808296ba700dd2bbecc5e29d5e07e655fa23dab99/paddlepaddle-3.2.2-cp311-cp311-win_amd64.whl", hash = "sha256:7ee7a0783de00a50f89a959aabfa83dd969ccce57e2c53f92f4d592d1df1aceb", size = 101715828, upload-time = "2025-11-14T13:12:58.853Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/3a/84204351f84bc837c6bc95592f3b4bf71487f4a99e72a5bc7027d2fe1ba8/paddlepaddle-3.2.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:c62dab0d4df6de2978960832f0015a145c23cd379418d932ddd8f546629d1fe4", size = 99510113, upload-time = "2025-11-14T13:27:27.71Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/2d/f46a5f5464c7d31e9e067e173a449cff8c0d96f7f7282b9454650901fe3c/paddlepaddle-3.2.2-cp312-cp312-manylinux1_x86_64.whl", hash = "sha256:f6b3b73d47acc82cf545896e6e5c31b55a7f9a26dc0acb28abcc24069d9396dd", size = 189280697, upload-time = "2025-11-19T11:52:09.004Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/e1/2f410bed4271df98ab2a720caa59ff408f8e8ca5daa6089b78b4326b8d10/paddlepaddle-3.2.2-cp312-cp312-manylinux2014_aarch64.whl", hash = "sha256:a59d9020ba160fa7f5aefcb30e4a6329390a635d1a0b511f6458139376c03f99", size = 88147129, upload-time = "2025-11-19T11:18:34.59Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/ff/ed7598e52e3ad2ebd8202076b4d2412e5e605a15b9ba03ab0cec6edf824e/paddlepaddle-3.2.2-cp312-cp312-win_amd64.whl", hash = "sha256:883954ea41fb1cccd022ac351f164b7a9f5cbc94be24223ce8bd981ddee93eb3", size = 101725915, upload-time = "2025-11-14T13:15:13.643Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/14/af48dcf222555f83480c8d50662944c34952b601b1f2b2264f5afe7e073a/paddlepaddle-3.2.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:f7e9bc0469d13d99925cd766c4a6ceeb5ab6043b790dd415ce076fbbebb39074", size = 99507300, upload-time = "2025-11-14T13:29:45.539Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/95/909e963330997da9da7e3f51337c19a022d8ba2b7863aaca5694aeca26cf/paddlepaddle-3.2.2-cp313-cp313-manylinux1_x86_64.whl", hash = "sha256:c4f485596a686ea72ab0ddffc9e41178f456314a99d4538f5d181a0156a927fa", size = 189281004, upload-time = "2025-11-19T11:53:41.89Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/76/74aed8ab5ac6961145bf3e0907a26ffccb69e35cafcd18e4046bb68565dd/paddlepaddle-3.2.2-cp313-cp313-manylinux2014_aarch64.whl", hash = "sha256:b03569ba151ac50aa730955c65dfa571fe7ae71f94574c94e8bfe5e0913a7d9c", size = 88143036, upload-time = "2025-11-19T11:20:22.844Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/b8/8a9f7b673c6ac0f26d8eb49cf8e7689e2f3f5cadd2fc6569ee5b9a4da81d/paddlepaddle-3.2.2-cp313-cp313-win_amd64.whl", hash = "sha256:a05d126c234d3985439cedf1f1005b109c3591ec2a0c5b59ca74a94b693eb283", size = 101726676, upload-time = "2025-11-14T13:17:22.507Z" },
+    { url = "https://files.pythonhosted.org/packages/da/0a/49a4ebce9eb2ef5785c178171aed4c71d2575de5c5e2ad60020ed93d34fa/paddlepaddle-3.2.2-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:9ffc9984b9bbac69d11d8ee9821bf826bc71c4b27f53a0b37fd01d22ce240747", size = 99454160, upload-time = "2025-11-19T11:12:51.153Z" },
+    { url = "https://files.pythonhosted.org/packages/1a/24/5497e5c829f32095f1fb71543a49a7f449edf5c49f72747036d14def3860/paddlepaddle-3.2.2-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:00d2241235f446c216565da6db54e079696fd6be13184e588527c16b2cc43f73", size = 189260465, upload-time = "2025-11-19T11:55:37.966Z" },
+    { url = "https://files.pythonhosted.org/packages/16/92/2b6f060d8db6cad299661cbf18ebe17f99b564aae3c11b4ac3386897b257/paddlepaddle-3.2.2-cp39-cp39-manylinux2014_aarch64.whl", hash = "sha256:575bae32b84262cfe72c8f84534c8f857054d0e5ee0f1feb3ad3a853b279fbea", size = 88169021, upload-time = "2025-11-19T11:22:11.636Z" },
+    { url = "https://files.pythonhosted.org/packages/ab/1b/2fa4e579c15cff29c638a09616a1ca4b2b5d2964ebbe100e5b863cd5b128/paddlepaddle-3.2.2-cp39-cp39-win_amd64.whl", hash = "sha256:7c5196c25322d89af996c7820208dd97325ef0a360386111df1a89259adde25e", size = 101616793, upload-time = "2025-11-14T13:19:31.474Z" },
 ]
 
 [[package]]
