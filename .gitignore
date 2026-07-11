@@ -43,5 +43,6 @@ Thumbs.db
 .env.local
 *.local
 docs/
+testdocs/
 extracted.pdf
 ocr_output.pdf
