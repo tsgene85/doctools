@@ -13,6 +13,9 @@ Run all commands from the project root with the virtual environment activated (e
 | **pdfdecrypt.py** | Remove password protection from a PDF when the password is known |
 | **pdftool.py** | Unified PDF CLI (e.g. `decrypt` subcommand) |
 | **pdfocr.py** | Deskew and OCR scanned PDFs (Tesseract); produce searchable PDF |
+| **gpht2db.py** | Inventory Google Photos Takeout folder → CSV or SQLite (paths, dates, Google IDs) |
+| **dbstat.py** | SQLite summaries (e.g. duplicate values in a column) |
+| **gphoto_api_demo.py** | Google Photos API demo (OAuth, Library app-created list, Picker) |
 | **sumai.py** | Answer questions from a document using OpenAI; extract title/date/summary |
 | **downvideo.py** | Download a YouTube video to a folder (uses yt-dlp, optional ffmpeg) |
 | **extractFaces.py** | Detect faces, compute embeddings, cluster; write JSON manifests |
@@ -124,6 +127,63 @@ python pdfocr.py -i scanned.pdf -o out.pdf --force-ocr
 ```
 
 **Options:** `-i/--input`, `-o/--output`, `-O/--output-same-dir`, `-T/--text`, `--no-deskew`, `-l/--language`, `-j/--jobs`, `-p/--pages`, `--optimize`, `--no-progress`, `--force-overwrite`, `--force-ocr`, `--renderer`, `--no-use-cli`.
+
+---
+
+### gpht2db.py – Google Photos Takeout → CSV / SQLite
+
+Walk a Takeout root folder, pair each image/video with its sidecar JSON, and write an inventory. Format follows `-o` extension.
+
+```bash
+python gpht2db.py -h
+python gpht2db.py -f "D:/Takeout/Google Photos" -o gpht_inventory.csv
+python gpht2db.py -f ./Takeout -o gpht.db
+python gpht2db.py -f "G:/Takeout/Boston 8_4_24" -r "G:/Takeout" -o boston.db
+python gpht2db.py -f ./Takeout -o out.sqlite -v
+```
+
+**Options:** `-f/--folder` (scan), `-r/--root` (path base for `relative_path`; default = `-f`), `-o/--output`, `-v/--verbose`.
+
+**Output:** `.csv` → CSV; `.db` / `.sqlite` / `.sqlite3` → SQLite table `media` (same columns + `id`).
+
+**Columns (selected):** `relative_path`, `media_type`, `file_ctime_utc`, `file_mtime_utc`, `photo_taken_ts` / `photo_taken_utc`, `creation_*`, `modification_*`, `google_unique_id` (from Takeout `url` when present), `sidecar_path`, GPS, description.
+
+---
+
+### dbstat.py – SQLite summaries
+
+Read-only summaries for a SQLite DB (uses Python `sqlite3`, no CLI install).
+
+```bash
+python dbstat.py -h
+python dbstat.py -d testdocs/gpht_all.db -s dup -c google_unique_id
+python dbstat.py -d testdocs/gpht_all.db -s dup -c google_unique_id -t media -n 20 -e 3
+python dbstat.py -d album.db -d2 testdocs/gpht_all.db -s dup2 -c google_unique_id
+```
+
+**Options:** `-d/--database`, `-d2/--database2` (for `dup2`), `-s/--summary` (`dup`, `dup2`), `-c/--column`, `-t/--table`, `-t2/--table2`, `-n/--limit` (0 = all), `-e/--examples`.
+
+- **dup** — duplicate values of `-c` within one DB  
+- **dup2** — values of `-c` present in both `-d` and `-d2`
+
+---
+
+### gphoto_api_demo.py – Google Photos API demo
+
+OAuth demo for **Library API** (app-created content only) and **Picker API** (user selects from full library).
+
+```bash
+uv sync --group gphoto
+python gphoto_api_demo.py -h
+python gphoto_api_demo.py auth -c client_secret.json
+python gphoto_api_demo.py albums
+python gphoto_api_demo.py media -n 20
+python gphoto_api_demo.py picker -o picked.json
+```
+
+Requires a Google Cloud OAuth Desktop client JSON. Enable Photos Library API + Photos Picker API. Library list endpoints will often be empty for a new app — that is expected after Google’s 2025 scope changes. Use `picker` to access the user’s library via selection.
+
+**Options:** `-c/--credentials`, `--token`; commands `auth`, `albums`, `media`, `picker`.
 
 ---
 
