@@ -14,6 +14,7 @@ Run all commands from the project root with the virtual environment activated (e
 | **pdftool.py** | Unified PDF CLI (e.g. `decrypt` subcommand) |
 | **pdfocr.py** | Deskew and OCR scanned PDFs (Tesseract); produce searchable PDF |
 | **gpht2db.py** | Inventory Google Photos Takeout folder → CSV or SQLite (paths, dates, Google IDs) |
+| **fdocs2db.py** | Inventory all files under a folder → SQLite/CSV (doc-organization workflow) |
 | **dbstat.py** | SQLite summaries (e.g. duplicate values in a column) |
 | **gphoto_api_demo.py** | Google Photos API demo (OAuth, Library app-created list, Picker) |
 | **sumai.py** | Answer questions from a document using OpenAI; extract title/date/summary |
@@ -147,6 +148,22 @@ python gpht2db.py -f ./Takeout -o out.sqlite -v
 **Output:** `.csv` → CSV; `.db` / `.sqlite` / `.sqlite3` → SQLite table `media` (same columns + `id`).
 
 **Columns (selected):** `relative_path`, `media_type`, `file_ctime_utc`, `file_mtime_utc`, `photo_taken_ts` / `photo_taken_utc`, `creation_*`, `modification_*`, `google_unique_id` (from Takeout `url` when present), `sidecar_path`, GPS, description.
+
+---
+
+### fdocs2db.py – Folder documents → SQLite / CSV
+
+First step of a document-organization workflow: inventory **all files** under a folder (not just photos).
+
+```bash
+python fdocs2db.py -h
+python fdocs2db.py -f "G:/Docs/archive" -o testdocs/fdocs.db
+python fdocs2db.py -f ./inbox -r ./archive -o inbox.db -v
+```
+
+**Options:** `-f/--folder`, `-r/--root` (path base for `relative_path`), `-o/--output`, `-v/--verbose`.
+
+**SQLite:** table `files` (`relative_path`, `extension`, `size_bytes`, `file_ctime_utc`, `file_mtime_utc`) plus `scan_meta`. Default output is `.db`.
 
 ---
 

@@ -24,6 +24,7 @@ uv sync --all-extras
 - **pdftool** – Unified CLI; e.g. `python pdftool.py decrypt -h`.
 - **pdfocr** – Deskew and OCR scanned PDFs; produces a searchable PDF.
 - **gpht2db** – Inventory a Google Photos Takeout folder to CSV or SQLite (paths, dates, Google IDs).
+- **fdocs2db** – Inventory all files under a folder to SQLite/CSV (doc-organization workflow start).
 - **dbstat** – SQLite summaries (`-s dup`, `-s dup2` across two DBs).
 - **gphoto_api_demo** – Google Photos OAuth demo (Library app-created + Picker).
 - **sumai** – Answer a question from a text document using the OpenAI API.

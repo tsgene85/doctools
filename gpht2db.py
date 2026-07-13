@@ -110,7 +110,13 @@ def _media_type(ext: str) -> str:
         return "image"
     if ext in VIDEO_EXT:
         return "video"
+    if ext == ".json":
+        return "json"
     return "other"
+
+
+def _is_photo_video(ext: str) -> bool:
+    return ext in IMAGE_EXT or ext in VIDEO_EXT
 
 
 def _json_time_fields(block: Any) -> tuple[str, str]:
@@ -277,6 +283,10 @@ def row_for_media(
         "image_views": "",
     }
 
+    # Sidecar JSON only applies to photos/videos, not to .json / other files.
+    if not _is_photo_video(ext):
+        return row
+
     sidecar = find_sidecar(media)
     if sidecar is None:
         if verbose:
@@ -320,74 +330,53 @@ def row_for_media(
     return row
 
 
-def scan_folder(root: Path) -> tuple[list[Path], dict[str, int], dict[str, int]]:
-    """
-    Walk root once. Return (media_files, category_counts, extension_counts).
-
-    Categories: image, video, json, other. Extension keys are lowercase suffixes
-    (e.g. '.jpg') or '(no extension)'.
-    """
-    media_files: list[Path] = []
-    by_category: dict[str, int] = {"image": 0, "video": 0, "json": 0, "other": 0}
+def scan_folder(root: Path) -> tuple[list[Path], dict[str, int]]:
+    """Walk root once. Return (all_files, extension_counts)."""
+    files: list[Path] = []
     by_ext: dict[str, int] = {}
 
     for p in root.rglob("*"):
         if not p.is_file():
             continue
+        files.append(p)
         ext = p.suffix.lower() or "(no extension)"
         by_ext[ext] = by_ext.get(ext, 0) + 1
 
-        if ext in IMAGE_EXT:
-            by_category["image"] += 1
-            media_files.append(p)
-        elif ext in VIDEO_EXT:
-            by_category["video"] += 1
-            media_files.append(p)
-        elif ext == ".json":
-            by_category["json"] += 1
-        else:
-            by_category["other"] += 1
-
-    media_files.sort(key=lambda x: x.as_posix().lower())
-    return media_files, by_category, by_ext
+    files.sort(key=lambda x: x.as_posix().lower())
+    return files, by_ext
 
 
 def _print_folder_summary(
     folder: Path,
-    by_category: dict[str, int],
     by_ext: dict[str, int],
     path_root: Path | None = None,
 ) -> None:
-    total = sum(by_category.values())
+    total = sum(by_ext.values())
     print(f"Folder: {folder}")
     if path_root is not None and path_root != folder:
         print(f"Path root: {path_root}")
     print(f"Total files: {total}")
-    print(
-        "By type: "
-        f"image={by_category['image']}, "
-        f"video={by_category['video']}, "
-        f"json={by_category['json']}, "
-        f"other={by_category['other']}"
-    )
     parts = [f"{ext}={n}" for ext, n in sorted(by_ext.items(), key=lambda x: (-x[1], x[0]))]
-    print("By extension: " + ", ".join(parts))
+    if len(parts) > 40:
+        print("By extension: " + ", ".join(parts[:40]) + f", ... (+{len(parts) - 40} more)")
+    else:
+        print("By extension: " + ", ".join(parts))
 
 
 def collect_rows(
     path_root: Path,
-    media_files: list[Path],
+    files: list[Path],
     verbose: bool = False,
 ) -> tuple[list[dict[str, str]], int]:
     rows: list[dict[str, str]] = []
     matched = 0
-    for i, media in enumerate(media_files, 1):
-        row = row_for_media(path_root, media, verbose=verbose)
+    for i, path in enumerate(files, 1):
+        row = row_for_media(path_root, path, verbose=verbose)
         if row["sidecar_path"]:
             matched += 1
         rows.append(row)
         if verbose and i % 500 == 0:
-            print(f"… {i}/{len(media_files)}", file=sys.stderr)
+            print(f"... {i}/{len(files)}", file=sys.stderr)
     return rows, matched
 
 
@@ -466,8 +455,8 @@ def build_inventory(
     verbose: bool = False,
 ) -> int:
     """
-    Scan folder for media; write inventory with paths relative to path_root
-    (defaults to folder).
+    Scan folder for all files; write inventory with paths relative to path_root
+    (defaults to folder). Photos/videos still get Takeout sidecar enrichment.
     """
     t0 = time.perf_counter()
     path_root = path_root or folder
@@ -483,12 +472,12 @@ def build_inventory(
         return 1
 
     t_scan = time.perf_counter()
-    media_files, by_category, by_ext = scan_folder(folder)
+    files, by_ext = scan_folder(folder)
     scan_s = time.perf_counter() - t_scan
-    _print_folder_summary(folder, by_category, by_ext, path_root=path_root)
+    _print_folder_summary(folder, by_ext, path_root=path_root)
 
-    if not media_files:
-        print(f"No media files found under {folder}", file=sys.stderr)
+    if not files:
+        print(f"No files found under {folder}", file=sys.stderr)
         print(f"Elapsed: {_format_elapsed(time.perf_counter() - t0)}")
         return 1
 
@@ -504,7 +493,7 @@ def build_inventory(
         fmt = "csv"
 
     t_meta = time.perf_counter()
-    rows, matched = collect_rows(path_root, media_files, verbose=verbose)
+    rows, matched = collect_rows(path_root, files, verbose=verbose)
     meta_s = time.perf_counter() - t_meta
 
     t_write = time.perf_counter()
@@ -516,8 +505,8 @@ def build_inventory(
 
     total_s = time.perf_counter() - t0
     print(
-        f"Wrote {len(rows)} media row(s) to {output} "
-        f"({matched} with sidecar metadata)."
+        f"Wrote {len(rows)} file row(s) to {output} "
+        f"({matched} photo/video with sidecar metadata)."
     )
     print(
         f"Timing: scan={_format_elapsed(scan_s)}, "
@@ -530,7 +519,7 @@ def build_inventory(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Create a CSV or SQLite inventory from a Google Photos Takeout folder.",
+        description="Create a CSV or SQLite inventory from a Google Photos Takeout folder (all files).",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -558,7 +547,7 @@ they are relative to -f.
         "--folder",
         required=True,
         metavar="DIR",
-        help="Folder to scan recursively for media",
+        help="Folder to scan recursively for all files",
     )
     parser.add_argument(
         "-r",
