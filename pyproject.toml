@@ -12,6 +12,7 @@ dependencies = [
     "cryptography>=3.1",
     "openpyxl>=3.1.0",
     "xlrd>=2.0.1",
+    "python-docx>=1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -35,7 +36,7 @@ faces = [
     "tqdm",
 ]
 video = [
-    "yt-dlp",
+    "yt-dlp[default]",
 ]
 paddle = [
     "paddleocr>=2.7.0",
@@ -53,6 +54,7 @@ all = [
     "openai",
     "python-pptx>=0.6.21",
     "pillow>=9.0.0",
+    "python-docx>=1.0.0",
     "fiftyone",
     "insightface",
     "onnxruntime",
@@ -60,7 +62,7 @@ all = [
     "numpy",
     "scikit-learn",
     "tqdm",
-    "yt-dlp",
+    "yt-dlp[default]",
     "paddleocr>=2.7.0",
     "paddlepaddle>=2.5.0,<3.3",
     "pypdfium2>=5.0.0",
@@ -92,7 +94,7 @@ faces = [
     "tqdm",
 ]
 video = [
-    "yt-dlp",
+    "yt-dlp[default]",
 ]
 paddle = [
     "paddleocr>=2.7.0",

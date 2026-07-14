@@ -43,6 +43,7 @@ def _tesseract_candidate_paths() -> list[Path]:
     candidates.extend([
         Path(pf) / "Tesseract-OCR",
         Path(pfx86) / "Tesseract-OCR",
+        Path(r"M:\ProgramFiles\Tesseract-OCR"),
     ])
     return [p for p in candidates if p.exists()]
 

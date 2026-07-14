@@ -2,6 +2,8 @@
 
 PDF merge, extract, and deskew/OCR tools.
 
+**Knowledge (OKF):** agent- and human-readable docs live in [`okf/`](okf/) — [Open Knowledge Format](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing) v0.1 (markdown + YAML frontmatter). Start at [`okf/index.md`](okf/index.md).
+
 ## Setup
 
 ```bash
@@ -25,6 +27,8 @@ uv sync --all-extras
 - **pdfocr** – Deskew and OCR scanned PDFs; produces a searchable PDF.
 - **gpht2db** – Inventory a Google Photos Takeout folder to CSV or SQLite (paths, dates, Google IDs).
 - **fdocs2db** – Inventory all files under a folder to SQLite/CSV (doc-organization workflow start).
+- **doc2text** – Extract text from PDF/DOCX/DOC to same-stem JSON for NLP.
+- **processdb** – Process inventory DB files (`-m doc2text`, `-fex`, `-ffl`).
 - **dbstat** – SQLite summaries (`-s dup`, `-s dup2` across two DBs).
 - **gphoto_api_demo** – Google Photos OAuth demo (Library app-created + Picker).
 - **sumai** – Answer a question from a text document using the OpenAI API.

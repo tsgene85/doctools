@@ -15,6 +15,8 @@ Run all commands from the project root with the virtual environment activated (e
 | **pdfocr.py** | Deskew and OCR scanned PDFs (Tesseract); produce searchable PDF |
 | **gpht2db.py** | Inventory Google Photos Takeout folder → CSV or SQLite (paths, dates, Google IDs) |
 | **fdocs2db.py** | Inventory all files under a folder → SQLite/CSV (doc-organization workflow) |
+| **doc2text.py** | Extract text from PDF/DOCX/DOC → same-stem JSON (NLP / sumai) |
+| **processdb.py** | Process inventory DB rows (`-m doc2text`, filters `-fex` / `-ffl`) |
 | **dbstat.py** | SQLite summaries (e.g. duplicate values in a column) |
 | **gphoto_api_demo.py** | Google Photos API demo (OAuth, Library app-created list, Picker) |
 | **sumai.py** | Answer questions from a document using OpenAI; extract title/date/summary |
@@ -22,6 +24,9 @@ Run all commands from the project root with the virtual environment activated (e
 | **extractFaces.py** | Detect faces, compute embeddings, cluster; write JSON manifests |
 | **reviewFaces.py** | Load face manifests into FiftyOne and launch the review app |
 | **export_cvat.py** | Export face manifests to CVAT-friendly Pascal VOC (images + XML) |
+| **xlstool.py** | Spreadsheet helpers |
+
+**OKF knowledge bundle:** [`okf/`](okf/) ([index](okf/index.md)) — Open Knowledge Format v0.1 docs for agents and humans.
 
 ---
 
@@ -167,6 +172,47 @@ python fdocs2db.py -f ./inbox -r ./archive -o inbox.db -v
 
 ---
 
+### doc2text.py – PDF / Word → JSON text
+
+Extract text for NLP; writes `<stem>.json` next to the input (sumai-compatible `pages` + full `text`).
+
+```bash
+python doc2text.py -h
+python doc2text.py -i report.docx          # -> report.json
+python doc2text.py -i scan.pdf
+python doc2text.py -i legacy.doc           # needs LibreOffice (soffice)
+python doc2text.py -d ./inbox -r
+python sumai.py -i report.json -q "Summarize"
+```
+
+**Options:** `-i/--input`, `-d/--directory`, `-r/--recursive`, `-o/--output` (single file only), `--skip-existing`, `-v`.
+
+PDF uses the same extraction as `pdfextract`. DOCX uses `python-docx`. Legacy `.doc` converts via LibreOffice then extracts.
+
+---
+
+### processdb.py – Process files from an inventory DB
+
+Walk rows in a SQLite inventory (`files` / `media`), filter, run a method on each file on disk.
+
+```bash
+python processdb.py -h
+python processdb.py -d testdocs/fdocs.db -m doc2text
+python processdb.py -d testdocs/fdocs.db -m doc2text -fex pdf,docx -ffl 2021/Contracts
+python processdb.py -d testdocs/fdocs.db -m pdfextract
+python processdb.py -d testdocs/fdocs.db -m pdfextract --ocr -u -ffl Contracts -v
+python processdb.py -d testdocs/fdocs.db -m pdfocr -ffl Contracts -v
+python processdb.py -d testdocs/fdocs.db -m doc2text -r "G:/Docs" --skip-existing -v
+```
+
+**Options:** `-d/--database`, `-m/--method` (`doc2text`, `pdfextract`, `pdfocr`), `-fex/--file-extension`, `-ffl/--folder-filter`, `-r/--root`, `-t/--table`, `-n/--limit`, `-u/--update`, `--ocr`, `--skip-existing`, `--allow-empty`, `-v`.
+
+- **doc2text** — NLP JSON for pdf/docx/doc  
+- **pdfextract** — create `<stem>.json` for PDFs missing a JSON pair; `-u` overwrites; `--ocr` runs OCR for image-only PDFs  
+- **pdfocr** — create searchable `<stem>_ext.pdf` beside each PDF (`uv sync --group ocr` + Tesseract)
+
+---
+
 ### dbstat.py – SQLite summaries
 
 Read-only summaries for a SQLite DB (uses Python `sqlite3`, no CLI install).
@@ -237,9 +283,11 @@ python sumai.py -i out.json -q "Summarize page 3" --model gpt-4o
 
 ### downvideo.py – Download YouTube video
 
-Uses **yt-dlp**. For best quality (video+audio merge), install **ffmpeg**. Without ffmpeg, a single-format fallback is used.
+Uses **yt-dlp[default]**. YouTube needs a **JS runtime** (**Deno** recommended, or Node). For best quality (video+audio merge), install **ffmpeg**. Without ffmpeg, a single-format fallback is used.
 
 ```bash
+uv sync --group video
+winget install DenoLand.Deno
 python downvideo.py -h
 
 # Prompt for URL (interactive)
