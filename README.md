@@ -29,6 +29,7 @@ uv sync --all-extras
 - **fdocs2db** – Inventory all files under a folder to SQLite/CSV (doc-organization workflow start).
 - **doc2text** – Extract text from PDF/DOCX/DOC to same-stem JSON for NLP.
 - **processdb** – Process inventory DB files (`-m doc2text`, `-fex`, `-ffl`).
+- **ngbill2csv** – National Grid electric bill PDFs → CSV (meters, rates, balances).
 - **dbstat** – SQLite summaries (`-s dup`, `-s dup2` across two DBs).
 - **gphoto_api_demo** – Google Photos OAuth demo (Library app-created + Picker).
 - **sumai** – Answer a question from a text document using the OpenAI API.
