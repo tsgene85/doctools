@@ -26,6 +26,7 @@ Run all commands from the project root with the virtual environment activated (e
 | **export_cvat.py** | Export face manifests to CVAT-friendly Pascal VOC (images + XML) |
 | **xlstool.py** | Spreadsheet helpers |
 | **csvdatclean.py** | Clean CSV tables (trim empty edges/columns; flatten +$/-$ money) |
+| **ngbill2csv.py** | National Grid electric bill PDFs → CSV (account, meters, rates, balances) |
 
 **OKF knowledge bundle:** [`okf/`](okf/) ([index](okf/index.md)) — Open Knowledge Format v0.1 docs for agents and humans.
 
@@ -188,6 +189,22 @@ python fdocs2db.py -f ./inbox -r ./archive -o inbox.db -v
 **Options:** `-f/--folder`, `-r/--root` (path base for `relative_path`), `-o/--output`, `-v/--verbose`.
 
 **SQLite:** table `files` (`relative_path`, `extension`, `size_bytes`, `file_ctime_utc`, `file_mtime_utc`) plus `scan_meta`. Default output is `.db`.
+
+---
+
+### ngbill2csv.py – National Grid bills → CSV
+
+Parse a folder of National Grid electric statement PDFs into one CSV row per bill (account, dates, meter readings, balances, delivery rates/fees).
+
+```bash
+python ngbill2csv.py -h
+python ngbill2csv.py -f testdocs/NGBills
+python ngbill2csv.py -f testdocs/NGBills -o testdocs/NGBills/ng_bills.csv -v
+```
+
+**Options:** `-f/--folder`, `-o/--output` (default `<folder>/ng_bills.csv`), `-r/--recursive`, `-v`.
+
+Handles classic delivery+supplier balance columns and later credit/solar layouts. See OKF [ngbill2csv](okf/tools/ngbill2csv.md).
 
 ---
 

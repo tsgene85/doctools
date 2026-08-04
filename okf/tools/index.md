@@ -7,6 +7,7 @@
 * [pdfdecrypt](pdfdecrypt.md) - Remove password when known
 * [pdftool](pdftool.md) - Unified PDF CLI (decrypt subcommand)
 * [pdfocr](pdfocr.md) - Deskew + OCR searchable PDF
+* [ngbill2csv](ngbill2csv.md) - National Grid bill PDFs → CSV
 
 ## Inventory and stats
 
