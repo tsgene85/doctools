@@ -25,8 +25,27 @@ Run all commands from the project root with the virtual environment activated (e
 | **reviewFaces.py** | Load face manifests into FiftyOne and launch the review app |
 | **export_cvat.py** | Export face manifests to CVAT-friendly Pascal VOC (images + XML) |
 | **xlstool.py** | Spreadsheet helpers |
+| **csvdatclean.py** | Clean CSV tables (trim empty edges/columns; flatten +$/-$ money) |
 
 **OKF knowledge bundle:** [`okf/`](okf/) ([index](okf/index.md)) — Open Knowledge Format v0.1 docs for agents and humans.
+
+---
+
+## CSV tools
+
+### csvdatclean.py – Clean CSV table exports
+
+```bash
+python csvdatclean.py -h
+
+# Default output: <stem>_clean.csv beside the input
+python csvdatclean.py -d positions.csv
+python csvdatclean.py -d positions.csv -o cleaned.csv -v
+```
+
+Stops at the first blank row (drops footer boilerplate), truncates trailing empty columns/rows, removes fully empty columns, and flattens `+$` / `-$` / `$` money cells to plain numbers.
+
+**Options:** `-d/--data`, `-o/--output`, `--encoding`, `-v/--verbose`.
 
 ---
 

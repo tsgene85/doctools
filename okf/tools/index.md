@@ -27,3 +27,4 @@
 * [reviewFaces](reviewFaces.md) - FiftyOne review UI
 * [export_cvat](export_cvat.md) - Export faces to CVAT Pascal VOC
 * [xlstool](xlstool.md) - Spreadsheet helpers
+* [csvdatclean](csvdatclean.md) - Trim empty CSV edges/columns; flatten +$/-$ money
