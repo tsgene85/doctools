@@ -27,6 +27,7 @@ Run all commands from the project root with the virtual environment activated (e
 | **xlstool.py** | Spreadsheet helpers |
 | **csvdatclean.py** | Clean CSV tables (trim empty edges/columns; flatten +$/-$ money) |
 | **ngbill2csv.py** | National Grid electric bill PDFs → CSV (account, meters, rates, balances) |
+| **adppay2csv.py** | ADP paystub PDFs → CSV (upsert by advice number) |
 
 **OKF knowledge bundle:** [`okf/`](okf/) ([index](okf/index.md)) — Open Knowledge Format v0.1 docs for agents and humans.
 
@@ -47,6 +48,18 @@ python csvdatclean.py -d positions.csv -o cleaned.csv -v
 Stops at the first blank row (drops footer boilerplate), truncates trailing empty columns/rows, removes fully empty columns, and flattens `+$` / `-$` / `$` money cells to plain numbers.
 
 **Options:** `-d/--data`, `-o/--output`, `--encoding`, `-v/--verbose`.
+
+### adppay2csv.py – ADP paystubs → CSV
+
+```bash
+python adppay2csv.py -h
+python adppay2csv.py -f testdocs/pay_statements_ADP
+python adppay2csv.py -f testdocs/pay_statements_ADP -o testdocs/pay_statements_ADP/adp_pay.csv -v
+```
+
+One row per earnings statement. Keyed by advice number; re-runs update existing keys and append only new stubs. Requires PyMuPDF.
+
+**Options:** `-f/--folder`, `-o/--output` (default `<folder>/adp_pay.csv`), `-r/--recursive`, `-v`.
 
 ---
 

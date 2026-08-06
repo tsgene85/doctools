@@ -1,6 +1,7 @@
 # Directory Update Log
 
 ## 2026-08-04
+* **Creation**: Added [adppay2csv](/tools/adppay2csv.md) — ADP paystub PDFs → CSV with advice-number upsert.
 * **Creation**: Added [csvdatclean](/tools/csvdatclean.md) — trim empty CSV edges/columns and flatten `+$`/`-$` money cells.
 
 ## 2026-07-13

@@ -8,6 +8,7 @@
 * [pdftool](pdftool.md) - Unified PDF CLI (decrypt subcommand)
 * [pdfocr](pdfocr.md) - Deskew + OCR searchable PDF
 * [ngbill2csv](ngbill2csv.md) - National Grid bill PDFs → CSV
+* [adppay2csv](adppay2csv.md) - ADP paystub PDFs → CSV (upsert by advice number)
 
 ## Inventory and stats
 
