@@ -1,0 +1,26 @@
+﻿# Example: banks dict keyed by profile; filename glob selects the profile.
+
+account: "Demo checking"
+history: ../testdocs/transync_demo/history.csv
+append_dir: ../testdocs/transync_demo/inbox
+append_glob: "*.csv"
+
+dedupe_keys:
+  - Date
+  - Amount
+  - Description
+
+# Optional duplicate reports (true | false | path)
+# appdups: true
+# hist_dups: true
+
+encoding: utf-8-sig
+
+banks:
+  demo_export:
+    glob: "export_*.csv"
+    format: generic
+    column_map:
+      Date: "Transaction Date"
+      Description: Payee
+      Amount: Amount

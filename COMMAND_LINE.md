@@ -25,7 +25,8 @@ Run all commands from the project root with the virtual environment activated (e
 | **reviewFaces.py** | Load face manifests into FiftyOne and launch the review app |
 | **export_cvat.py** | Export face manifests to CVAT-friendly Pascal VOC (images + XML) |
 | **xlstool.py** | Spreadsheet helpers |
-| **csvdatclean.py** | Clean CSV tables (trim empty edges/columns; flatten +$/-$ money) |
+| **csvdatclean.py** | Clean CSV tables (trim empty edges/columns; flatten money; `-cs` currency std) |
+| **transync.py** | Bank transaction CSV sync into history (YAML config; dedupe; dry-run) |
 | **ngbill2csv.py** | National Grid electric bill PDFs → CSV (account, meters, rates, balances) |
 | **adppay2csv.py** | ADP paystub PDFs → CSV (upsert by advice number) |
 
@@ -43,11 +44,35 @@ python csvdatclean.py -h
 # Default output: <stem>_clean.csv beside the input
 python csvdatclean.py -d positions.csv
 python csvdatclean.py -d positions.csv -o cleaned.csv -v
+python csvdatclean.py -d history.csv -cs -v
 ```
 
 Stops at the first blank row (drops footer boilerplate), truncates trailing empty columns/rows, removes fully empty columns, and flattens `+$` / `-$` / `$` money cells to plain numbers.
 
-**Options:** `-d/--data`, `-o/--output`, `--encoding`, `-v/--verbose`.
+With `-cs` / `--currency-standardize`, detects currency columns (header keywords + cell patterns) and normalizes amounts, including accounting negatives: `(1,234.56)` → `-1234.56`.
+
+**Options:** `-d/--data`, `-o/--output`, `-cs/--currency-standardize`, `--encoding`, `-v/--verbose`.
+
+### transync.py – Bank transaction CSV sync
+
+Append bank export CSVs into a history CSV without duplicates. Config is YAML; bank profile is chosen by matching the append **filename** to `banks.*.glob`. `-n` / `--dry-run` reports what would change.
+
+```bash
+python transync.py -h
+python transync.py -c _GTNotes/transync.yaml -n
+python transync.py -c _GTNotes/transync.yaml -n -df
+python transync.py -c _GTNotes/transync.yaml -dh
+python transync.py -c _GTNotes/transync.yaml -n -df -dh
+python transync.py -c _GTNotes/transync.yaml -n -v
+python transync.py -c _GTNotes/transync.yaml --list-banks
+```
+
+**Options:** `-c/--config`, `-n/--dry-run`, `-df/--dup-file` `[FILE]`, `-dh/--history-dup-file` `[FILE]`, `-v/--verbose`, `--list-banks`.
+
+- `-df` / YAML `appdups` — skipped append duplicates. Default: `<history_stem>_appdups.csv`
+- `-dh` / YAML `hist_dups` — duplicates **inside history only**. Default: `<history_stem>_hist_dups.csv`
+
+See OKF [transync](okf/tools/transync.md).
 
 ### adppay2csv.py – ADP paystubs → CSV
 
