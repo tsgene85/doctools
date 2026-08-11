@@ -514,7 +514,15 @@ def _find_bofa_header_index(rows: list[list[str]]) -> int:
         norm = [_norm_cell(c).lower() for c in cells]
         if not norm:
             continue
+        # Checking: Date, Description, Amount, Running Bal.
         if norm[0] == "date" and "description" in norm and "amount" in norm:
+            return i
+        # Business CC (BA_BCC): CardHolder Name, … Trans. Date, Reference ID, Description, Amount
+        if (
+            "description" in norm
+            and "amount" in norm
+            and ("trans. date" in norm or "posting date" in norm)
+        ):
             return i
     return -1
 
